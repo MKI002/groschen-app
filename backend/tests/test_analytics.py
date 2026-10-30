@@ -46,7 +46,10 @@ def test_stats_on_a_steady_series():
 def test_last_30_days_goes_by_even_weeks(loaded, conn):
     start, end, label = common.resolve_range("last30", today=dt.date(2026, 10, 3))
     assert (start, end, label) == ("2026-09-04", "2026-10-03", "Last 30 days")
-    start, end, label = common.resolve_range("last30", today=TODAY)
+    # On the 30th of a 31-day month the last 30 days are exactly that month, shown by its own
+    # weeks; a day earlier they are the rolling weeks this test is about.
+    today = TODAY if common.resolve_range("last30", today=TODAY)[0][8:10] != "01" else TODAY - dt.timedelta(days=1)
+    start, end, label = common.resolve_range("last30", today=today)
     summary = cashflow.summary(conn, start, end, label)
     trend = summary["trend"]
     assert trend["unit"] == "week"
