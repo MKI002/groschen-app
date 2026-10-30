@@ -1,0 +1,20 @@
+[project]
+name = "groschen"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 125
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "S"]
+ignore = ["S101", "S104", "S311", "S608", "B008", "B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"groschen/categorize/seed.py" = ["E501"]

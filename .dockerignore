@@ -1,0 +1,22 @@
+# Only what the image needs goes into the build context.
+**/.git
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/*.tsbuildinfo
+backend/groschen/static
+backend/model
+backend/tests
+frontend/dist
+data
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/secret.key
+**/.env
+**/.env.*
+.github
+unraid
+README.md

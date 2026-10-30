@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+frontend/dist/
+backend/groschen/static/
+backend/model/
+data/
+*.db
+*.db-wal
+*.db-shm
+secret.key
+.DS_Store
+*.tsbuildinfo

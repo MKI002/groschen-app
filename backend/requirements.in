@@ -1,0 +1,16 @@
+# Top-level dependencies. requirements.txt is generated from this file with exact versions and hashes:
+#   uv pip compile requirements.in --override overrides.txt --generate-hashes --python-version 3.12 --python-platform x86_64-manylinux_2_28 -o requirements.txt
+fastapi==0.141.1
+uvicorn==0.54.0
+python-multipart==0.0.32
+pydantic==2.13.5
+fints==5.0.1
+apscheduler==3.11.3
+argon2-cffi==25.1.0
+cryptography==50.0.1
+numpy==2.4.6
+onnxruntime==1.30.0
+tokenizers==0.23.2
+tzdata
+# Passkey login (WebAuthn): checks the signatures that phones, laptops and security keys make.
+webauthn==3.0.1
