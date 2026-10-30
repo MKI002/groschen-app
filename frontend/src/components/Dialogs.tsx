@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { catName, t, useT, type Key } from "../i18n";
 import { api } from "../lib/api";
+import { currentPath } from "../lib/router";
 import { useApp } from "../lib/app";
 import { colorVar } from "../lib/format";
 import type { Category, Connection, UserGroup } from "../lib/types";
@@ -103,7 +104,7 @@ function GroupEditor({ group, onClose }: { group: UserGroup | null; onClose: () 
     await api.del(`/groups/${group.id}`);
     refresh();
     onClose();
-    if (location.pathname === `/groups/${group.id}`) history.back();
+    if (currentPath() === `/groups/${group.id}`) history.back();
   }
   const byGroup = new Map<string, Category[]>();
   for (const c of cats.filter((c) => c.kind === "expense")) {

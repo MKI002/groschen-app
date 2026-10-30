@@ -4,9 +4,18 @@ import { reducedMotion } from "../components/Motion";
 
 // A tiny router: the server answers every path with the app, the app picks the page.
 
+// Where the app lives: "/" when Groschen serves it, a folder for the web demo on GitHub Pages.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// The app's own path, without the folder it is served from.
+export function currentPath(): string {
+  const p = location.pathname;
+  return BASE && p.startsWith(BASE) ? p.slice(BASE.length) || "/" : p;
+}
+
 // Swap the current address without a new history entry (old links, view switches).
 export function redirect(path: string) {
-  history.replaceState(null, "", path);
+  history.replaceState(null, "", BASE + path);
   window.dispatchEvent(new Event("groschen:navigate"));
 }
 type ViewTransitionDoc = Document & { startViewTransition?: (update: () => void) => unknown };
@@ -15,7 +24,7 @@ type ViewTransitionDoc = Document & { startViewTransition?: (update: () => void)
 // elsewhere, and with reduced motion, the page simply swaps.
 export function navigate(path: string) {
   const go = () => {
-    if (path !== location.pathname + location.search) history.pushState(null, "", path);
+    if (path !== currentPath() + location.search) history.pushState(null, "", BASE + path);
     flushSync(() => window.dispatchEvent(new Event("groschen:navigate")));
     window.scrollTo(0, 0);
   };
@@ -25,9 +34,9 @@ export function navigate(path: string) {
 }
 
 export function usePath(): string {
-  const [path, setPath] = useState(location.pathname);
+  const [path, setPath] = useState(currentPath());
   useEffect(() => {
-    const update = () => setPath(location.pathname);
+    const update = () => setPath(currentPath());
     window.addEventListener("popstate", update);
     window.addEventListener("groschen:navigate", update);
     return () => {

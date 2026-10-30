@@ -1378,4 +1378,5 @@ export const de: Record<Key, string> = {
   "an.ret.period": "Rendite im Zeitraum",
   "an.ret.youIn": "{when}, mit deinen Einzahlungen",
   "an.swing.whole": "Seit Beginn, der Zeitraum ist dafür zu kurz",
+  "demo.banner": "Demo mit erfundenen Daten · Änderungen werden nicht gespeichert · Groschen holen ↗",
 };
