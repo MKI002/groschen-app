@@ -1,5 +1,5 @@
-# Tests every change. On main of the original repository it also publishes the image to
-# GitHub's registry; forks and copies only build and test.
+# Tests every change. On main of this repository it also publishes the public image to
+# GitHub's registry; forks only build and test.
 # Actions are pinned to commit hashes; the tag they stand for is in the comment.
 name: Build
 
@@ -64,7 +64,7 @@ jobs:
       contents: read
       packages: write
     env:
-      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'MKI002/groschen' }}
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'MKI002/groschen-app' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -110,12 +110,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # "latest" is what Unraid pulls. Every build also gets its own date-and-commit tag,
-      # so an older version can be picked in Unraid to roll back.
+      # "latest" is what Docker hosts pull. Every build also gets its own date-and-commit tag,
+      # so an older version can be picked to roll back.
       - name: Publish
         if: env.PUBLISH == 'true'
         run: |
-          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/groschen"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
           version="$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
           docker tag groschen:test "$image:$version"
           docker tag groschen:test "$image:latest"
@@ -127,6 +127,6 @@ jobs:
         if: env.PUBLISH == 'true'
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
         with:
-          package-name: groschen
+          package-name: groschen-app
           package-type: container
           min-versions-to-keep: 20

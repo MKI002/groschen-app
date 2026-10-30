@@ -1,20 +1,20 @@
 <?xml version="1.0"?>
 <!-- Unraid container template. Copy it to /boot/config/plugins/dockerMan/templates-user/my-Groschen.xml,
-     then pick "Groschen" under Docker, Add Container, Template. Unraid must be logged in to ghcr.io (see README). -->
+     then pick "Groschen" under Docker, Add Container, Template. -->
 <Container version="2">
   <Name>Groschen</Name>
-  <Repository>ghcr.io/mki002/groschen:latest</Repository>
-  <Registry>https://github.com/MKI002/groschen/pkgs/container/groschen</Registry>
+  <Repository>ghcr.io/mki002/groschen-app:latest</Repository>
+  <Registry>https://github.com/MKI002/groschen-app/pkgs/container/groschen-app</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support/>
-  <Project/>
+  <Support>https://github.com/MKI002/groschen-app/issues</Support>
+  <Project>https://github.com/MKI002/groschen-app</Project>
   <Overview>Private finance dashboard for ING Germany. Syncs your accounts over FinTS, categorizes on this server with a built-in model, and never connects to anything but your bank. Everything is set up in the web page.</Overview>
   <Category>Productivity: Tools:</Category>
   <WebUI>http://[IP]:[PORT:8420]/</WebUI>
-  <TemplateURL/>
+  <TemplateURL>https://raw.githubusercontent.com/MKI002/groschen-app/main/unraid/groschen.xml</TemplateURL>
   <Icon/>
   <ExtraParams>--cap-drop=ALL --cap-add=CHOWN --cap-add=SETUID --cap-add=SETGID --cap-add=DAC_READ_SEARCH --cap-add=FOWNER --security-opt=no-new-privileges:true --memory=1g --cpu-shares=256</ExtraParams>
   <PostArgs/>

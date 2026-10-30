@@ -1,0 +1,52 @@
+# Dependabot checks once a month for new versions and opens at most one pull request
+# per area (Python packages, web app packages, base images, GitHub build steps).
+# Each pull request runs the full build, tests and security scans before it can be merged.
+#
+# Big version jumps (a new major version, or a new Python release like 3.12 -> 3.14)
+# are left out: they usually need code changes and are done on purpose, not automatically.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      web:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    ignore:
+      # Python stays on 3.12.x: a newer release needs the package list re-locked for it.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Node stays on its current major version, which is also what the build uses.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+    groups:
+      base-images:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

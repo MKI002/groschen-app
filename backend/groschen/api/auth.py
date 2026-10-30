@@ -46,7 +46,7 @@ def _client(request: Request) -> tuple[str, str | None]:
 
 
 # Container variable for the case where every passkey is lost while the password login is
-# off: set it in Unraid's container settings, restart, and the password works again.
+# off: set it on the container, restart, and the password works again.
 RESCUE_ENV = "GROSCHEN_ALLOW_PASSWORD"
 
 

@@ -1,6 +1,6 @@
 """Timed work: the bank sync, the nightly backup and housekeeping.
 
-Times follow the TZ of the container (Unraid passes its own time zone).
+Times follow the TZ of the container (set it with TZ, Unraid passes its own).
 """
 
 import logging
