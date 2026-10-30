@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!-- Unraid container template. Copy it to /boot/config/plugins/dockerMan/templates-user/my-Groschen.xml,
+     then pick "Groschen" under Docker, Add Container, Template. Unraid must be logged in to ghcr.io (see README). -->
+<Container version="2">
+  <Name>Groschen</Name>
+  <Repository>ghcr.io/mki002/groschen:latest</Repository>
+  <Registry>https://github.com/MKI002/groschen/pkgs/container/groschen</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project/>
+  <Overview>Private finance dashboard for ING Germany. Syncs your accounts over FinTS, categorizes on this server with a built-in model, and never connects to anything but your bank. Everything is set up in the web page.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8420]/</WebUI>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams>--cap-drop=ALL --cap-add=CHOWN --cap-add=SETUID --cap-add=SETGID --cap-add=DAC_READ_SEARCH --cap-add=FOWNER --security-opt=no-new-privileges:true --memory=1g --cpu-shares=256</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Web port" Target="8420" Default="8420" Mode="tcp" Description="Port for the web page. Don't forward it on your router; use Tailscale or WireGuard from outside." Type="Port" Display="always" Required="true" Mask="false">8420</Config>
+  <Config Name="Data folder" Target="/data" Default="/mnt/user/appdata/groschen" Mode="rw" Description="Database, the key that protects your bank PIN, and nightly backups." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/groschen</Config>
+  <Config Name="Time zone" Target="TZ" Default="Europe/Berlin" Mode="" Description="Used for the sync and backup schedule." Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Berlin</Config>
+  <Config Name="User ID" Target="PUID" Default="99" Mode="" Description="The app runs as this user (99 is Unraid's nobody)." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="Group ID" Target="PGID" Default="100" Mode="" Description="The app runs with this group (100 is Unraid's users)." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+</Container>

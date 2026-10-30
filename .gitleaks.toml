@@ -1,0 +1,7 @@
+# Secret scanning rules: gitleaks' defaults, plus one known false alarm.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "SHA-256 checksums of the public categorizer model files, not secrets"
+paths = ['''^backend/model\.lock\.json$''']

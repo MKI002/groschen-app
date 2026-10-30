@@ -1,0 +1,4 @@
+# tokenizers declares huggingface-hub as a dependency, but Groschen only loads a
+# tokenizer file that is already in the image and never uses the Hub. The impossible
+# marker keeps the Hub client (and its download helpers) out of the image.
+huggingface-hub ; sys_platform == "never"
