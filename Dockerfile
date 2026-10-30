@@ -2,7 +2,7 @@
 # Base images are pinned by version and digest; Dependabot proposes updates.
 
 # --- 1. Web app ------------------------------------------------------------------------
-FROM node:22.23.3-trixie-slim@sha256:b26b04c123d9ff8ab646ceb18b9d75a1173acf64b9a401094b906d27b29338d4 AS web
+FROM node:22.23.3-trixie-slim@sha256:28d03803f09ba76560e273af33beb7eda4ed68fa0698bc9bd15e9a6e35693923 AS web
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
@@ -10,7 +10,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- 2. Python packages, installed only from wheels with checked hashes -----------------
-FROM python:3.12.14-slim-trixie@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f AS deps
+FROM python:3.12.15-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS deps
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 COPY backend/requirements.txt /tmp/requirements.txt
 # pip is removed afterwards: nothing installs packages inside the running container.
@@ -21,20 +21,20 @@ RUN python -m venv /opt/venv \
  && chmod -R a-w /opt/venv
 
 # --- 3. App code, compiled ahead so nothing is written next to it at runtime ----------------
-FROM python:3.12.14-slim-trixie@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f AS app
+FROM python:3.12.15-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS app
 COPY backend/groschen /app/groschen
 COPY --from=web /src/backend/groschen/static /app/groschen/static
 RUN python -m compileall -q /app/groschen \
  && chmod -R a-w /app
 
 # --- 4. Categorizer model, downloaded here once so the app never has to ----------------
-FROM python:3.12.14-slim-trixie@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f AS model
+FROM python:3.12.15-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS model
 COPY backend/model.lock.json /src/model.lock.json
 COPY backend/scripts/fetch_model.py /src/scripts/fetch_model.py
 RUN python /src/scripts/fetch_model.py /model
 
 # --- 5. The image that runs on Unraid ------------------------------------------------------
-FROM python:3.12.14-slim-trixie@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f AS runtime
+FROM python:3.12.15-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS runtime
 
 # Debian security fixes (OpenSSL and friends) often land before a new base image is
 # published. Installing them here means every build ships them; the build workflow never
