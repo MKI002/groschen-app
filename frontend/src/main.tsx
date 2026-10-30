@@ -17,14 +17,19 @@ addEventListener("storage", (e) => {
   if (e.key === "groschen.motion") applyMotionPref();
 });
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ToastProvider>
-      <MeshBackdrop />
-      <App />
-      <CoinLayer />
-      <EggLayer />
-      <UpdateNotice />
-    </ToastProvider>
-  </StrictMode>,
-);
+const start = () =>
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <ToastProvider>
+        <MeshBackdrop />
+        <App />
+        <CoinLayer />
+        <EggLayer />
+        <UpdateNotice />
+      </ToastProvider>
+    </StrictMode>,
+  );
+
+// The web demo answers from recorded sample data instead of a Groschen server.
+if (import.meta.env.MODE === "demo") void import("./demo/shim").then(({ install }) => install()).then(start);
+else start();

@@ -1376,6 +1376,7 @@ export const en = {
   "an.ret.period": "Return in this period",
   "an.ret.youIn": "{when}, with your payments",
   "an.swing.whole": "Since the start: the period is too short for this",
+  "demo.banner": "Demo with made-up data · changes are not saved · get Groschen ↗",
 } as const;
 
 export type Key = keyof typeof en;

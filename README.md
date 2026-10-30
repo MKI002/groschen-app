@@ -11,6 +11,11 @@
 </p>
 
 <p align="center">
+  <a href="https://mki002.github.io/groschen-app/"><b>▶ Try the live demo</b></a><br>
+  <sub>The real app in your browser, with made-up data. Nothing to install.</sub>
+</p>
+
+<p align="center">
   <a href="#install-on-unraid">Install</a> ·
   <a href="#try-it-with-demo-data">Try the demo</a> ·
   <a href="#whats-inside">Features</a> ·
@@ -185,7 +190,11 @@ model, categorizes sample texts and confirms the network guard blocks the intern
 
 ## Try it with demo data
 
-Groschen ships with a made-up person, two years of invented bookings and a small depot, so you can
+The quickest way is the **[live demo](https://mki002.github.io/groschen-app/)**: the real web app
+running in your browser on recorded sample data. Clicks work, changes are not kept, and no server
+or bank is involved.
+
+To run the whole thing yourself, Groschen ships with a made-up person, two years of invented bookings and a small depot, so you can
 look around without a bank account:
 
 ```bash
@@ -214,6 +223,7 @@ cd frontend
 npm ci
 npm run dev                                      # http://127.0.0.1:5173
 npm run build                                    # writes into backend/groschen/static
+npm run build:demo                               # the web demo, into dist-demo
 ```
 
 `requirements.txt` is generated from `requirements.in` (the command is at the top of that file).
