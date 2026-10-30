@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="#install-on-unraid">Install</a> ·
+  <a href="#install">Install</a> ·
   <a href="#try-it-with-demo-data">Try the demo</a> ·
   <a href="#whats-inside">Features</a> ·
   <a href="#privacy-and-network">Privacy</a> ·
@@ -58,7 +58,7 @@
 - [What's inside](#whats-inside)
 - [Privacy and network](#privacy-and-network)
 - [ING: what to know](#ing-what-to-know)
-- [Install on Unraid](#install-on-unraid)
+- [Install](#install)
 - [Updates](#updates)
 - [Try it with demo data](#try-it-with-demo-data)
 - [Development](#development)
@@ -125,7 +125,46 @@
   them at every sync. For older price history, import a file with one line per day:
   `date;ISIN;price`.
 
-## Install on Unraid
+## Install
+
+Groschen is one Docker image, `ghcr.io/mki002/groschen-app:latest`, for 64-bit Intel/AMD
+servers. It needs a port and a data folder; everything else is set up in the web page.
+Any Docker host works: a Linux box, a Synology or QNAP NAS, Unraid, Portainer, TrueNAS.
+
+### Docker Compose
+
+Save [`docker-compose.yml`](docker-compose.yml) in a new folder and run:
+
+```bash
+docker compose up -d
+```
+
+### docker run
+
+```bash
+docker run -d --name groschen --restart unless-stopped \
+  -p 8420:8420 -v /path/to/groschen-data:/data \
+  -e TZ=Europe/Berlin -e PUID=1000 -e PGID=1000 \
+  --cap-drop=ALL --cap-add=CHOWN --cap-add=SETUID --cap-add=SETGID \
+  --cap-add=DAC_READ_SEARCH --cap-add=FOWNER \
+  --security-opt=no-new-privileges:true --memory=1g \
+  ghcr.io/mki002/groschen-app:latest
+```
+
+Then open `http://your-server:8420` and the setup wizard takes it from there.
+
+| Setting | What it is | Default |
+| --- | --- | --- |
+| Port `8420` | The web page. Don't forward it on your router; use Tailscale or WireGuard from outside. | |
+| Volume `/data` | Database, the key that protects your bank PIN, and nightly backups. Back this up. | |
+| `TZ` | Time zone for the sync and backup schedule. | `Europe/Berlin` |
+| `PUID` / `PGID` | The user and group the app runs as. Use the owner of your data folder (`id -u`, `id -g`). | `99` / `100` |
+
+The container starts as root only long enough to take ownership of the data folder, then runs as
+`PUID:PGID`. The capability flags drop every other privilege and cap memory at 1 GB.
+
+<details>
+<summary>Unraid</summary>
 
 1. Copy [`unraid/groschen.xml`](unraid/groschen.xml) to
    `/boot/config/plugins/dockerMan/templates-user/my-Groschen.xml`, then **Docker → Add Container**
@@ -133,47 +172,29 @@
 
    | Field | Value |
    | --- | --- |
-   | Repository | `ghcr.io/mki002/groschen:latest` (or your own build, see below) |
+   | Repository | `ghcr.io/mki002/groschen-app:latest` |
    | Port | container `8420`, host `8420` |
    | Path | container `/data`, host `/mnt/user/appdata/groschen` |
    | Icon URL | `http://your-server:8420/icon.png` (your server's name or IP) |
    | Extra Parameters | `--cap-drop=ALL --cap-add=CHOWN --cap-add=SETUID --cap-add=SETGID --cap-add=DAC_READ_SEARCH --cap-add=FOWNER --security-opt=no-new-privileges:true --memory=1g --cpu-shares=256` |
 
-2. Open `http://your-server:8420`. The setup wizard takes it from there.
-
-<details>
-<summary>The image is private? Log in to GitHub's registry first</summary>
-
-1. On GitHub, create a classic personal access token with only the `read:packages` scope.
-   It can download images and nothing else. Keep it out of chats and repositories.
-2. Open the Unraid terminal (the **>_** icon at the top right) and run
-   `docker login ghcr.io -u <your-github-name>`. Paste the token when it asks for the password;
-   it should print `Login Succeeded`.
-3. Unraid forgets this login when the server restarts. A User Scripts script that runs the same
-   login "At Startup of Array" keeps update checks working.
+2. The defaults `PUID=99` and `PGID=100` are Unraid's nobody:users, so nothing else to set.
+3. The app serves its own logo for the Icon URL. If the Docker tab shows a question mark because
+   the container wasn't running yet, click **Edit** on Groschen and **Apply** once more.
 
 </details>
 
 <details>
-<summary>Build your own image</summary>
+<summary>Build the image yourself</summary>
 
 ```bash
-git clone https://github.com/<you>/<this-repo>.git && cd <this-repo>
+git clone https://github.com/MKI002/groschen-app.git && cd groschen-app
 docker build -t groschen:local .
 ```
 
-Then use `groschen:local` as the Repository.
+Then use `groschen:local` instead of the image name above.
 
 </details>
-
-The app serves its own logo for the Icon URL, so it works without the internet and with the
-private repository. Unraid downloads it once when the Docker tab loads and keeps a copy. If the
-tab shows a question mark because the container wasn't running yet, click **Edit** on Groschen
-and **Apply** once more.
-
-The container starts as root only long enough to take ownership of the data folder, then runs as
-`99:100` (Unraid's nobody:users). The extra parameters drop every other privilege, cap memory at
-1 GB and give the container a lower CPU priority than Jellyfin or Tdarr.
 
 ## Updates
 
@@ -181,10 +202,11 @@ Every change to `main` is tested and built by GitHub Actions (see [`.github/work
 The image only gets published if the tests pass and a self-test inside the finished image loads the
 model, categorizes sample texts and confirms the network guard blocks the internet.
 
-- Back up the appdata folder first (the Appdata Backup plugin does this).
-- Unraid: **Docker → Check for updates → apply update**, or **Force update** on the Groschen icon.
+- Back up the data folder first.
+- Pull the new image and recreate the container: `docker compose pull && docker compose up -d`,
+  or **Check for updates** in Unraid, Portainer or similar. The database is upgraded on start.
 - Every build is also tagged with its date and commit, for example `2026.09.27-1a2b3c4`. To roll
-  back, put that tag in place of `latest` in the Repository field.
+  back, use that tag instead of `latest`.
 - The app never updates itself. Base images, Python packages and GitHub Actions are pinned to
   exact versions and hashes, and change only through a reviewed pull request.
 
@@ -199,8 +221,8 @@ look around without a bank account:
 
 ```bash
 mkdir demo-data
-docker run --rm -v "$PWD/demo-data:/data" ghcr.io/mki002/groschen:latest python -m groschen.demo
-docker run --rm -p 8420:8420 -v "$PWD/demo-data:/data" ghcr.io/mki002/groschen:latest
+docker run --rm -v "$PWD/demo-data:/data" ghcr.io/mki002/groschen-app:latest python -m groschen.demo
+docker run --rm -p 8420:8420 -v "$PWD/demo-data:/data" ghcr.io/mki002/groschen-app:latest
 ```
 
 Open http://localhost:8420, create a login, and skip the bank step.
@@ -244,5 +266,6 @@ backend/groschen/
   selftest.py   checks run inside the finished image before it's published
 frontend/src/   React web app (no router or chart libraries)
 unraid/         Unraid container template
+docker-compose.yml  example for Docker Compose
 Dockerfile      web app, packages, model and app in one image
 ```

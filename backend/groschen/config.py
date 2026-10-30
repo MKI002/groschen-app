@@ -1,7 +1,7 @@
 """Runtime configuration.
 
 Everything a user can change lives in the database and is edited in the web UI.
-The only values read from the environment are the ones Docker/Unraid decides:
+The only values read from the environment are the ones the Docker setup decides:
 where the data folder is, which port to listen on and the time zone. One more,
 GROSCHEN_ALLOW_PASSWORD=1, is a way back in if every passkey is lost while the
 password login is off (see api/auth.py).

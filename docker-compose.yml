@@ -1,0 +1,20 @@
+# Groschen with Docker Compose: `docker compose up -d`, then open http://<your-server>:8420.
+# Everything else (bank, schedule, backups, login) is set up in the web page.
+services:
+  groschen:
+    image: ghcr.io/mki002/groschen-app:latest
+    container_name: groschen
+    restart: unless-stopped
+    ports:
+      - "8420:8420"      # don't forward this on your router; use Tailscale or WireGuard from outside
+    volumes:
+      - ./data:/data     # database, the key that protects your bank PIN, and nightly backups
+    environment:
+      TZ: Europe/Berlin  # used for the sync and backup schedule
+      PUID: "1000"       # the app runs as this user and group; match the owner of ./data
+      PGID: "1000"
+    # Starts as root only to take ownership of ./data, then drops every other privilege.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, DAC_READ_SEARCH, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g

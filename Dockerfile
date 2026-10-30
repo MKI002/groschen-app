@@ -33,7 +33,7 @@ COPY backend/model.lock.json /src/model.lock.json
 COPY backend/scripts/fetch_model.py /src/scripts/fetch_model.py
 RUN python /src/scripts/fetch_model.py /model
 
-# --- 5. The image that runs on Unraid ------------------------------------------------------
+# --- 5. The image that runs on your server ------------------------------------------------
 FROM python:3.12.14-slim-trixie@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f AS runtime
 
 # Debian security fixes (OpenSSL and friends) often land before a new base image is
@@ -45,7 +45,7 @@ RUN apt-get update \
 
 LABEL org.opencontainers.image.title="Groschen" \
       org.opencontainers.image.description="Self-hosted finance dashboard for ING Germany" \
-      org.opencontainers.image.source="https://github.com/MKI002/groschen"
+      org.opencontainers.image.source="https://github.com/MKI002/groschen-app"
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \

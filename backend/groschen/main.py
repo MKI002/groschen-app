@@ -62,7 +62,7 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
-        # Other apps on the same Unraid host count as the "same site" for cookies, so a
+        # Other apps on the same server count as the "same site" for cookies, so a
         # SameSite cookie alone doesn't stop them from posting to Groschen. Every change
         # must carry a header that a plain cross-site form or image request can't set.
         if request.method in UNSAFE_METHODS and request.url.path.startswith("/api/"):
@@ -98,7 +98,7 @@ def create_app() -> FastAPI:
             if target.is_relative_to(static_root) and target.is_file():
                 headers = {"Cache-Control": "public, max-age=31536000, immutable"} if path.startswith("assets/") else {}
                 if path == "icon.png":
-                    # The logo for Unraid's Docker tab. Unraid's form shows a preview from its own
+                    # The logo for Docker dashboards such as Unraid's, which show a preview from their own
                     # address, which is another origin, so this one public file may be embedded.
                     headers["Cross-Origin-Resource-Policy"] = "cross-origin"
                 return FileResponse(target, headers=headers)

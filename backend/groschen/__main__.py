@@ -12,9 +12,9 @@ from .bank import sync
 def drop_root() -> None:
     """Hand the data folder to the app user and stop running as root.
 
-    Unraid creates a missing appdata folder as root, so the container starts as root,
+    Docker hosts often create a missing data folder as root, so the container starts as root,
     takes ownership of the data folder and then switches for good to PUID/PGID
-    (Unraid's nobody:users, 99:100, unless the template says otherwise).
+    (99:100 by default, Unraid's nobody:users).
     """
     if not hasattr(os, "geteuid") or os.geteuid() != 0:
         return
