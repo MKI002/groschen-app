@@ -9,31 +9,31 @@ never touch python-fints objects directly.
 
 import datetime as dt
 import logging
+import re
 import time
 from decimal import Decimal
 
 from ..jobs import UserFacingError
+from . import banks
 
 log = logging.getLogger("groschen.fints")
 
-BANKS = {
-    "50010517": {
-        "name": "ING-DiBa AG",
-        "short": "ING",
-        "server": "https://fints.ing.de/fints/",
-        "bic": "INGDDEFFXXX",
-        "history_days": 90,
-    },
-}
-
 DECOUPLED_TIMEOUT = 180  # seconds to wait for an approval in the banking app
+HISTORY_DAYS = 90  # what banks hand out without a TAN (PSD2)
+
+# Words in the names banks give their app-based approval, for banks whose parameters don't say so.
+_APP_WORDS = re.compile(r"push|securego|bestsign|secureplus|decoupled|entkoppelt|\bapp\b", re.I)
 
 
-def bank_info(bank_code: str) -> dict:
-    info = BANKS.get(bank_code)
-    if not info:
-        raise UserFacingError("This bank isn't supported yet. For now Groschen connects to ING.")
-    return info
+def bank_info(bank_code: str, server: str | None = None) -> dict:
+    """Name, short name, FinTS address and app of the bank behind a Bankleitzahl."""
+    info = banks.resolve(None, bank_code, server)
+    if not info["server"]:
+        raise UserFacingError(
+            "Groschen doesn't know the FinTS address of this bank yet. Enter it under Advanced: "
+            "your bank lists it on its website (search for FinTS or HBCI PIN/TAN)."
+        )
+    return {**info, "history_days": HISTORY_DAYS}
 
 
 def account_kind(fints_type: int | None, product_name: str | None) -> str:
@@ -107,57 +107,131 @@ def map_holding(h) -> dict:
     }
 
 
-def _explain(exc: Exception) -> UserFacingError:
+def _explain(exc: Exception, bank: str = "The bank") -> UserFacingError:
     text = str(exc)
     lower = text.lower()
-    if "pin" in lower and ("falsch" in lower or "wrong" in lower or "ungültig" in lower or "gesperrt" in lower):
-        return UserFacingError("ING didn't accept the access number or PIN. Check both and try again.")
+    name = type(exc).__name__
+    if name == "FinTSClientPINError" or (
+        "pin" in lower and ("falsch" in lower or "wrong" in lower or "ungültig" in lower or "gesperrt" in lower)
+    ):
+        return UserFacingError(f"{bank} didn't accept the login or PIN. Check both and try again.")
+    if name == "FinTSClientTemporaryAuthError":
+        return UserFacingError(f"{bank} has locked the online access for now. Unlock it in your online banking first.")
     if "9010" in text or "9050" in text or "9800" in text or "9942" in text:
         return UserFacingError(
-            "ING refused the request. If you haven't logged in to ING banking in the last 90 days, "
-            f"do that once and try again. ING said: {text}"
+            f"{bank} refused the request. Log in to your online banking once, check that FinTS (HBCI) "
+            f"access is turned on there, and try again. The bank said: {text}"
         )
     if "Blocked by Groschen" in text:
         return UserFacingError(text)
     if "Max retries" in text or "Connection" in text or "timed out" in lower or "Name or service" in text:
-        return UserFacingError("Groschen couldn't reach ING. Check that the server has internet access and try again.")
-    return UserFacingError(f"ING returned an error: {text}")
+        return UserFacingError(
+            f"Groschen couldn't reach {bank}. Check that the server has internet access and the FinTS address is right."
+        )
+    return UserFacingError(f"{bank} returned an error: {text}")
+
+
+def _app_score(parameter) -> int:
+    """How sure it is that this TAN method approves in an app, without a TAN to type (0 to 2)."""
+    if getattr(parameter, "decoupled_max_poll_number", None) is not None:
+        return 2
+    return int(bool(_APP_WORDS.search(str(getattr(parameter, "name", "") or ""))))
+
+
+def challenge_view(response) -> dict:
+    """What the web page shows for a TAN request: the bank's text and, for photoTAN, the picture."""
+    import base64
+
+    view = {"text": getattr(response, "challenge", None) or "", "image": None}
+    matrix = getattr(response, "challenge_matrix", None)
+    if matrix and matrix[0] in ("image/png", "image/jpeg", "image/gif"):
+        view["image"] = f"data:{matrix[0]};base64,{base64.b64encode(matrix[1]).decode()}"
+    return view
 
 
 class FinTSSession:
-    """One conversation with the bank. Use as a context manager."""
+    """One conversation with the bank. Use as a context manager.
 
-    def __init__(self, bank_code: str, login: str, pin: str, product_id: str, state: bytes | None = None, on_wait=None):
+    on_wait(message) says the bank waits for an approval in its app. on_tan(challenge)
+    asks the person at the web page for a TAN and returns it, or None when nobody can answer
+    (a sync running at night).
+    """
+
+    def __init__(
+        self,
+        bank_code: str,
+        login: str,
+        pin: str,
+        product_id: str,
+        state: bytes | None = None,
+        on_wait=None,
+        server: str | None = None,
+        on_tan=None,
+    ):
         from fints.client import FinTS3PinTanClient
 
-        self.info = bank_info(bank_code)
+        self.info = bank_info(bank_code, server)
         self.bank_code = bank_code
         self.on_wait = on_wait or (lambda msg: None)
-        # Set once the user approved a request in the banking app: that approval is the login ING
-        # asks for every 90 days, so the countdown can start again by itself.
+        self.on_tan = on_tan
+        # Set once the user approved a request in the banking app or typed a TAN: that is the
+        # login the bank asks for every 90 days, so the countdown can start again by itself.
         self.approved = False
         if not product_id:
             raise UserFacingError("A FinTS product ID is needed. You get one free from the Deutsche Kreditwirtschaft.")
+        server = self.info["server"]
         try:
-            self.client = FinTS3PinTanClient(
-                bank_code, login, pin, self.info["server"], product_id=product_id, from_data=state
-            )
+            self.client = FinTS3PinTanClient(bank_code, login, pin, server, product_id=product_id, from_data=state)
         except Exception:
             # Stored state from an older version can be unreadable: start fresh.
-            self.client = FinTS3PinTanClient(bank_code, login, pin, self.info["server"], product_id=product_id)
+            self.client = FinTS3PinTanClient(bank_code, login, pin, server, product_id=product_id)
+
+    @property
+    def bank(self) -> str:
+        return self.info["label"]
 
     def __enter__(self):
         try:
             if not self.client.get_current_tan_mechanism():
                 self.client.fetch_tan_mechanisms()
+                if self.info["id"] != "ing":  # ING logs in with the PIN alone
+                    self._prefer_app()
             self.client.__enter__()
             if self.client.init_tan_response:
                 self._resolve(self.client.init_tan_response)
         except UserFacingError:
             raise
         except Exception as exc:
-            raise _explain(exc) from exc
+            raise _explain(exc, self.bank) from exc
         return self
+
+    def _prefer_app(self) -> None:
+        """Choose approval in the banking app over TANs to type, and the device it runs on.
+
+        python-fints takes the first method the bank lists, which is often chipTAN. An app
+        approval also works for the daily sync, as long as someone has the phone.
+        """
+        try:
+            methods = self.client.get_tan_mechanisms()
+        except Exception as err:
+            log.debug("Couldn't list the TAN methods: %s", err)
+            return
+        usable = {k: p for k, p in methods.items() if k != "999" and str(getattr(p, "tan_process", "2")) == "2"}
+        scored = sorted(((_app_score(p), k) for k, p in usable.items()), key=lambda x: -x[0])
+        app = scored[0][1] if scored and scored[0][0] else None
+        if app and app != self.client.get_current_tan_mechanism():
+            self.client.set_tan_mechanism(app)
+        chosen = usable.get(self.client.get_current_tan_mechanism())
+        if chosen is None or str(getattr(chosen, "description_required", "")) != "2":
+            return
+        try:
+            _, media = self.client.get_tan_media()
+        except Exception as err:
+            log.debug("Couldn't list the TAN devices: %s", err)
+            return
+        active = [m for m in media or [] if getattr(m, "tan_medium_name", None)]
+        if active:
+            self.client.set_tan_medium(active[0])
 
     def __exit__(self, *exc):
         try:
@@ -174,13 +248,19 @@ class FinTSSession:
         started = time.monotonic()
         while isinstance(response, NeedTANResponse):
             if not response.decoupled:
-                raise UserFacingError(
-                    "ING asked for a TAN, which Groschen can't enter. Log in to ING banking once "
-                    "(website or app) and try again."
-                )
+                tan = self.on_tan(challenge_view(response)) if self.on_tan else None
+                if not tan:
+                    raise UserFacingError(
+                        f"{self.bank} asked for a TAN. Press Sync now in Groschen while you have your TAN device, "
+                        "and type the TAN when Groschen asks."
+                    )
+                response = self.client.send_tan(response, tan.strip())
+                if not isinstance(response, NeedTANResponse):
+                    self.approved = True
+                continue
             if time.monotonic() - started > DECOUPLED_TIMEOUT:
                 raise UserFacingError("The approval in your banking app timed out. Try again when you have your phone.")
-            self.on_wait("Please approve the request in your ING app.")
+            self.on_wait("Please approve the request in your banking app.")
             time.sleep(3)
             response = self.client.send_tan(response, "")
             if not isinstance(response, NeedTANResponse):
@@ -193,7 +273,7 @@ class FinTSSession:
         except UserFacingError:
             raise
         except Exception as exc:
-            raise _explain(exc) from exc
+            raise _explain(exc, self.bank) from exc
 
     def accounts(self) -> list[dict]:
         """All accounts, including the depot (which has no IBAN and is missing from the SEPA list)."""
@@ -221,6 +301,8 @@ class FinTSSession:
             seen_numbers.add(acc.accountnumber)
         from fints.models import SEPAAccount
 
+        # A depot has no IBAN or BIC of its own: the bank's BIC comes from its other accounts.
+        bic = self.info.get("bic") or next((a.bic for a in sepa if a.bic), None)
         for u in upd:
             number = u.get("account_number")
             if not number or number in seen_numbers:
@@ -230,7 +312,7 @@ class FinTSSession:
                 continue
             sepa_like = SEPAAccount(
                 iban=None,
-                bic=self.info["bic"],
+                bic=bic,
                 accountnumber=number,
                 subaccount=u.get("subaccount_number"),
                 blz=self.bank_code,
@@ -243,7 +325,7 @@ class FinTSSession:
                     "iban": None,
                     "account_number": number,
                     "subaccount": u.get("subaccount_number"),
-                    "bic": self.info["bic"],
+                    "bic": bic,
                     "blz": self.bank_code,
                     "currency": u.get("currency") or "EUR",
                 }

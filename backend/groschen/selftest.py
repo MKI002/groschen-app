@@ -23,8 +23,8 @@ def main() -> int:
     from .categorize import embedder, engine
 
     netguard.install()
-    sync.allow_bank_hosts()
     db.init()
+    sync.allow_bank_hosts()
     failures = []
 
     emb = embedder.get_embedder()
