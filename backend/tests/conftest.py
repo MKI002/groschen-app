@@ -41,7 +41,7 @@ def demo_data():
 def run_job(monkeypatch):
     """Run background jobs in the calling thread so tests can check the result straight away."""
 
-    def start(kind, fn, *args, **kwargs):
+    def start(kind, fn, *args, interactive=False, **kwargs):
         job = jobs.run_inline(kind, fn, *args, **kwargs)
         jobs._jobs[job.id] = job
         return job

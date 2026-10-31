@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { TanPrompt } from "../components/BankForm";
 import { confirmBankLogin, DialogHost, openDialog } from "../components/Dialogs";
 import { Icon, Logo } from "../components/Icons";
 import { usePointerEffects } from "../components/Motion";
@@ -6,6 +7,7 @@ import { Dropdown, Spinner, useToast } from "../components/UI";
 import { locale, t, useT, type Key } from "../i18n";
 import { useApp, type Period } from "../lib/app";
 import { dateShort, initial, relTime } from "../lib/format";
+import type { Connection } from "../lib/types";
 import { hideAmounts, useHidden, useHideWanted } from "../lib/privacy";
 import { decodePart, navigate, usePath } from "../lib/router";
 import CashFlow from "./CashFlow";
@@ -63,19 +65,24 @@ function navBadge(to: string, badges: ReturnType<typeof useApp>["badges"]): Reac
   return null;
 }
 
+// With several banks, the one to show: one that needs attention, else the next login due.
+function mostUrgent(connections: Connection[]): Connection | undefined {
+  return [...connections].sort((a, b) => Number(b.status === "error") - Number(a.status === "error") || a.login_days_left - b.login_days_left)[0];
+}
+
 // The bank connection in one line, and the button that syncs it. In the sidebar on a computer,
 // as a small chip in the top bar on a phone.
 function SyncBox({ compact = false }: { compact?: boolean }) {
   const { connections, syncing, sync, badges } = useApp();
   const t = useT();
-  const c = connections[0];
+  const c = mostUrgent(connections);
   if (!c) {
     if (compact) return null;
     return (
       <button className="syncbox" onClick={() => openDialog({ kind: "connect" })}>
         <Icon name="bank" size={16} />
         <span className="sb-txt">
-          <b>{t("shell.connectIng")}</b>
+          <b>{t("shell.connectBank")}</b>
           <small>{t("shell.usingCsv")}</small>
         </span>
       </button>
@@ -84,7 +91,7 @@ function SyncBox({ compact = false }: { compact?: boolean }) {
   const left = c.login_days_left;
   // The 90-day bank login only gets a line once it is close; until then it is one more number to read.
   const due = left <= (badges?.reminder_days ?? 15);
-  const state = syncing ? (syncing.state === "waiting" ? t("shell.approve") : t("shell.syncing")) : c.status === "error" ? t("shell.attention", { bank: c.short }) : t("shell.connected", { bank: c.short });
+  const state = syncing ? (syncing.state === "waiting" ? t("shell.approve") : t("shell.syncing")) : c.status === "error" ? t("shell.attention", { bank: c.label }) : connections.length > 1 ? t("shell.connectedMany", { n: connections.length }) : t("shell.connected", { bank: c.label });
   const dot = syncing ? <Spinner /> : <span className={c.status === "error" ? "dotbad" : "dotok"} />;
   if (compact) {
     return (
@@ -100,7 +107,7 @@ function SyncBox({ compact = false }: { compact?: boolean }) {
       <span className="sb-txt">
         <b>{state}</b>
         <small>{t("shell.synced", { when: relTime(c.last_sync_at) })}</small>
-        {due && <small className={left <= 3 ? "neg" : "warn"}>{left > 0 ? t("shell.loginIn", { n: left }) : t("shell.loginNow")}</small>}
+        {due && <small className={left <= 3 ? "neg" : "warn"}>{left > 0 ? t("shell.loginIn", { n: left, bank: c.label }) : t("shell.loginNow", { bank: c.label })}</small>}
       </span>
       <Icon name="refresh" size={15} className="sb-go" />
     </button>
@@ -265,13 +272,13 @@ function LoginBanner() {
   const toast = useToast();
   const t = useT();
   const path = usePath();
-  const c = connections[0];
+  const c = mostUrgent(connections);
   if (!c || c.login_days_left > (badges?.reminder_days ?? 15) || path === "/settings") return null;
   return (
     <div className="banner" role="status">
       <Icon name="lock" size={17} />
       <span>
-        <b>{t("shell.loginBanner", { date: dateShort(c.login_due) })}</b> {t("shell.loginBanner.why")}
+        <b>{t("shell.loginBanner", { bank: c.label, date: dateShort(c.login_due) })}</b> {t("shell.loginBanner.why")}
       </span>
       <button className="btn sm" onClick={() => confirmBankLogin(c, toast, refresh)}>
         <Icon name="check" size={15} />
@@ -282,7 +289,7 @@ function LoginBanner() {
 }
 
 export default function Shell() {
-  const { badges, status, logout } = useApp();
+  const { badges, status, logout, syncing } = useApp();
   const t = useT();
   const path = usePath();
   // Every page draws its amounts again when they are hidden or shown.
@@ -350,6 +357,7 @@ export default function Shell() {
         })}
       </nav>
       <DialogHost />
+      <TanPrompt job={syncing} />
     </div>
   );
 }

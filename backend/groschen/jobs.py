@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 
 from . import i18n
 
+TAN_TIMEOUT = 300  # seconds to wait for a TAN typed into the web page
+
 
 @dataclass
 class Job:
@@ -17,6 +19,11 @@ class Job:
     steps: list = field(default_factory=list)
     result: dict | None = None
     error: str | None = None
+    # Started from the web page, so someone may be there to type a TAN.
+    interactive: bool = False
+    tan: dict | None = None  # the bank's TAN request while it waits for one
+    _answer: str | None = field(default=None, repr=False)
+    _answered: threading.Event = field(default_factory=threading.Event, repr=False)
 
     def add_steps(self, *labels: str) -> None:
         self.steps = [{"label": label, "state": "pending"} for label in labels]
@@ -38,6 +45,29 @@ class Job:
         self.state = "running"
         self.message = ""
 
+    def ask_tan(self, challenge: dict, timeout: float = TAN_TIMEOUT) -> str | None:
+        """Wait for the TAN the user types on the web page. None when nobody is there to ask."""
+        if not self.interactive:
+            return None
+        self._answer = None
+        self._answered.clear()
+        self.tan = challenge
+        self.wait("Enter the TAN your bank asks for.")
+        try:
+            self._answered.wait(timeout)
+            return self._answer
+        finally:
+            self.tan = None
+            self.resume()
+
+    def give_tan(self, tan: str | None) -> bool:
+        """The user's answer: a TAN, or None to cancel."""
+        if self.tan is None:
+            return False
+        self._answer = tan
+        self._answered.set()
+        return True
+
     def as_dict(self) -> dict:
         return {
             "id": self.id,
@@ -48,6 +78,7 @@ class Job:
             "steps": [{**s, "label": i18n.tr(s["label"])} for s in self.steps],
             "result": self.result,
             "error": i18n.tr(self.error),
+            "tan": self.tan,
         }
 
 
@@ -67,9 +98,9 @@ def running(kind: str) -> Job | None:
     return None
 
 
-def start(kind: str, fn, *args, **kwargs) -> Job:
+def start(kind: str, fn, *args, interactive: bool = False, **kwargs) -> Job:
     """Run ``fn(job, *args)`` in a thread. Errors end up in ``job.error`` as plain text."""
-    job = Job(id=uuid.uuid4().hex[:12], kind=kind)
+    job = Job(id=uuid.uuid4().hex[:12], kind=kind, interactive=interactive)
     with _lock:
         _jobs[job.id] = job
         if len(_jobs) > 50:

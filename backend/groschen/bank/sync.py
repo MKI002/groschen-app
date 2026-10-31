@@ -6,8 +6,8 @@ import logging
 from .. import db, netguard, security, settings
 from ..categorize import engine
 from ..jobs import Job, UserFacingError
-from . import csv_ing, store
-from .fints_client import BANKS, FinTSSession, bank_info, public_account
+from . import banks, csv_import, store
+from .fints_client import HISTORY_DAYS, FinTSSession, bank_info, public_account
 
 log = logging.getLogger("groschen.sync")
 
@@ -15,43 +15,61 @@ log = logging.getLogger("groschen.sync")
 session_factory = FinTSSession
 
 
-def _host(url: str) -> str:
-    return url.split("//", 1)[-1].split("/", 1)[0]
-
-
 def allow_bank_hosts() -> None:
-    for info in BANKS.values():
-        netguard.allow_host(_host(info["server"]))
+    """Let Groschen reach the FinTS servers of the banks the user connected, and nothing else."""
+    with db.session() as conn:
+        for (server,) in conn.execute("SELECT DISTINCT server FROM connections").fetchall():
+            if banks.host_of(server):
+                netguard.allow_host(banks.host_of(server))
 
 
-def test_connection(job: Job, bank_code: str, login: str, pin: str, product_id: str) -> dict:
+def _release_host(server: str) -> None:
+    """A test that didn't end in a saved connection takes its server off the list again."""
+    with db.session() as conn:
+        used = conn.execute("SELECT 1 FROM connections WHERE server = ?", (server,)).fetchone()
+    if not used:
+        netguard.disallow_host(banks.host_of(server))
+
+
+def test_connection(job: Job, bank_code: str, login: str, pin: str, product_id: str, server: str | None = None) -> dict:
     """Log in once, list the accounts and save the connection (credentials encrypted)."""
-    info = bank_info(bank_code)
-    job.add_steps(f"Connecting to {info['short']}", "Reading your accounts")
+    with db.session() as conn:
+        info = banks.resolve(conn, bank_code, server)
+    if not info["server"]:
+        info = bank_info(bank_code)  # says what is missing
+    bank = info["label"]
+    job.add_steps(f"Connecting to {bank}", "Reading your accounts")
     job.step(0)
-    with netguard.purpose(f"{info['short']} connection test"):
-        with session_factory(bank_code, login, pin, product_id, None, on_wait=job.wait) as s:
-            job.resume()
-            job.step(1)
-            accounts = s.accounts()
-            balances = {}
-            for acc in accounts:
-                if acc["kind"] != "depot":
-                    try:
-                        balances[acc["account_number"]] = s.balance(acc)
-                    except UserFacingError:
-                        balances[acc["account_number"]] = None
-            state = s.state()
-            approved = getattr(s, "approved", False)
+    netguard.allow_host(banks.host_of(info["server"]))
+    try:
+        with netguard.purpose(f"{bank} connection test"):
+            with session_factory(
+                bank_code, login, pin, product_id, None, on_wait=job.wait, server=info["server"], on_tan=job.ask_tan
+            ) as s:
+                job.resume()
+                job.step(1)
+                accounts = s.accounts()
+                balances = {}
+                for acc in accounts:
+                    if acc["kind"] != "depot":
+                        try:
+                            balances[acc["account_number"]] = s.balance(acc)
+                        except UserFacingError:
+                            balances[acc["account_number"]] = None
+                state = s.state()
+                approved = getattr(s, "approved", False)
+    except Exception:
+        _release_host(info["server"])
+        raise
 
     with db.session() as conn:
-        row = db.one(conn.execute("SELECT id FROM connections WHERE bank_code = ?", (bank_code,)))
+        row = _same_login(conn, bank_code, login)
         values = (security.encrypt(login), security.encrypt(pin), product_id, security.encrypt_bytes(state))
         if row:
             conn.execute(
-                "UPDATE connections SET login_enc = ?, pin_enc = ?, product_id = ?, state_enc = ?, status = 'ok', "
-                "last_error = NULL WHERE id = ?",
-                (*values, row["id"]),
+                "UPDATE connections SET login_enc = ?, pin_enc = ?, product_id = ?, state_enc = ?, server = ?, "
+                "status = 'ok', last_error = NULL WHERE id = ?",
+                (*values, info["server"], row["id"]),
             )
             connection_id = row["id"]
             if approved:
@@ -75,13 +93,28 @@ def test_connection(job: Job, bank_code: str, login: str, pin: str, product_id: 
     return {"connection_id": connection_id, "accounts": result}
 
 
+def _same_login(conn, bank_code: str, login: str) -> dict | None:
+    """The saved connection for this login at this bank: testing again updates it.
+
+    Two logins at one bank (say a joint account) are two connections.
+    """
+    rows = db.rows(conn.execute("SELECT id, login_enc FROM connections WHERE bank_code = ? ORDER BY id", (bank_code,)))
+    for r in rows:
+        try:
+            if security.decrypt(r["login_enc"]) == login:
+                return r
+        except Exception as err:  # unreadable after a key change: treat it as another login
+            log.debug("Couldn't read a saved login: %s", err)
+    return None
+
+
 def _logged_in(conn, connection_id: int) -> None:
     """The user approved a request in the banking app: the 90 days until the next login start again."""
     conn.execute("UPDATE connections SET bank_login_confirmed_at = ? WHERE id = ?", (db.now_iso(), connection_id))
 
 
 def _since(conn, connection: dict, full: bool) -> dt.date:
-    days = bank_info(connection["bank_code"])["history_days"] - 1
+    days = HISTORY_DAYS - 1
     earliest = dt.date.today() - dt.timedelta(days=days)
     if full or not connection.get("last_sync_at"):
         return earliest
@@ -98,16 +131,19 @@ def sync_connection(job: Job, connection_id: int, full: bool = False, step_offse
             conn.execute("SELECT * FROM accounts WHERE connection_id = ? AND enabled = 1 AND manual = 0", (connection_id,))
         )
         since = _since(conn, c, full)
-    info = bank_info(c["bank_code"])
+        info = banks.resolve(conn, c["bank_code"])
+    bank = info["label"] if info["source"] == "known" else c["bank_name"]
     login, pin = security.decrypt(c["login_enc"]), security.decrypt(c["pin_enc"])
     state = security.decrypt_bytes(c["state_enc"])
     new_ids: list[int] = []
     counts = {"transactions": 0, "holdings": 0}
     approved = False
     try:
-        with netguard.purpose(f"{info['short']} sync"):
+        with netguard.purpose(f"{bank} sync"):
             job.step(step_offset + 0)
-            with session_factory(c["bank_code"], login, pin, c["product_id"], state, on_wait=job.wait) as s:
+            with session_factory(
+                c["bank_code"], login, pin, c["product_id"], state, on_wait=job.wait, server=c["server"], on_tan=job.ask_tan
+            ) as s:
                 job.resume()
                 job.step(step_offset + 1)
                 live = {(a.get("iban") or a["account_number"]): a for a in s.accounts()}
@@ -153,7 +189,7 @@ def sync_all(job: Job, full: bool = False, first_run: bool = False) -> dict:
         connections = db.rows(conn.execute("SELECT id, bank_name FROM connections ORDER BY id"))
     if first_run:
         job.add_steps(
-            "Connecting to ING",
+            "Connecting to your bank",
             "Fetching the last 90 days from your accounts",
             "Merging with your imported history",
             "Categorizing your transactions",
@@ -188,6 +224,8 @@ def _csv_kind(parsed: dict) -> str:
     name = (parsed["account_name"] or "").lower()
     if name.startswith(("extra", "tagesgeld", "spar")):
         return "savings"
+    if name.startswith(("kreditkarte", "visa", "mastercard")):
+        return "credit_card"
     if name:
         return "checking"
     texts = {(r["booking_text"] or "").lower() for r in parsed["rows"]}
@@ -232,7 +270,7 @@ def remember_holder(conn, *names: str | None) -> None:
 
 
 def import_csv(job: Job, raw: bytes, account_id: int | None = None, filename: str | None = None) -> dict:
-    parsed = csv_ing.parse(raw, filename)
+    parsed = csv_import.parse(raw, filename)
     with db.session() as conn:
         if account_id is None:
             account_id = _csv_account(conn, parsed)
@@ -252,8 +290,8 @@ def import_csv(job: Job, raw: bytes, account_id: int | None = None, filename: st
                     "name": parsed["account_name"] or "Girokonto",
                     "iban": parsed["iban"],
                     "account_number": None,
-                    "bic": BANKS["50010517"]["bic"],
-                    "blz": "50010517",
+                    "bic": None,
+                    "blz": banks.blz_from(parsed["iban"] or ""),
                     "currency": "EUR",
                 },
             )
@@ -280,7 +318,7 @@ def import_csv(job: Job, raw: bytes, account_id: int | None = None, filename: st
 
 
 def import_prices(raw: bytes) -> dict:
-    prices = csv_ing.parse_prices(raw)
+    prices = csv_import.parse_prices(raw)
     with db.session() as conn:
         for isin, date, price in prices:
             conn.execute(

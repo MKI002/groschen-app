@@ -42,7 +42,7 @@ def test_every_built_in_category_has_a_german_name():
 
 
 def test_filled_in_messages_are_translated(german):
-    assert i18n.tr("ING returned an error: Zugang gesperrt") == "Die ING hat einen Fehler gemeldet: Zugang gesperrt"
+    assert i18n.tr("ING returned an error: Zugang gesperrt") == "ING hat einen Fehler gemeldet: Zugang gesperrt"
     assert i18n.tr("Connecting to ING") == "Verbinde mit ING"
     assert i18n.tr("Something only the bank says") == "Something only the bank says"
 
@@ -61,7 +61,7 @@ def test_job_messages_follow_the_page_language(client, run_job, demo_data, monke
     job = client.post("/api/bank/test", json={"login": "123", "pin": "wrong", "product_id": "ABCDEF123"}, headers=H).json()
     assert job["error"].startswith("ING didn't accept")
     again = client.get(f"/api/jobs/{job['id']}", headers=DE).json()
-    assert again["error"].startswith("Die ING hat Zugangsnummer oder PIN nicht akzeptiert")
+    assert again["error"].startswith("ING hat Anmeldename oder PIN nicht akzeptiert")
     assert again["steps"][0]["label"] == "Verbinde mit ING"
 
 

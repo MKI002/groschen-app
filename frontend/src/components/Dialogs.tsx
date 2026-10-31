@@ -11,7 +11,7 @@ import { Icon } from "./Icons";
 import { Modal, useConfirm } from "./UI";
 
 // Dialogs that more than one page opens. Any page asks for one with openDialog();
-// the shell draws it, so "New group" or "Connect ING" work from wherever the button is.
+// the shell draws it, so "New group" or "Connect your bank" work from wherever the button is.
 
 type Request = { kind: "connect" } | { kind: "group"; group: UserGroup | null };
 
@@ -41,7 +41,7 @@ export function DialogHost() {
   return <GroupEditor group={req.group} onClose={() => setReq(null)} />;
 }
 
-// "I was logged in to ING": restarts the 90-day count. Offered wherever the reminder shows.
+// "I logged in to my bank": restarts the 90-day count. Offered wherever the reminder shows.
 export async function confirmBankLogin(c: Connection, toast: (m: string) => void, refresh: () => void) {
   await api.post(`/connections/${c.id}/confirm-login`);
   toast(t("set.loginConfirmed"));
@@ -54,7 +54,7 @@ function ConnectBank({ onDone }: { onDone: () => void }) {
   useT();
   return (
     <Modal
-      title={t("shell.connectIng")}
+      title={t("shell.connectBank")}
       onClose={onDone}
       actions={
         <button
