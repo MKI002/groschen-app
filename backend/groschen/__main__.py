@@ -42,8 +42,8 @@ def main() -> None:
     drop_root()
     # Install the network guard before anything else can open a connection.
     netguard.install()
-    sync.allow_bank_hosts()
     db.init()
+    sync.allow_bank_hosts()
     with db.session() as conn:
         market.apply_setting(conn)
     scheduler.start()

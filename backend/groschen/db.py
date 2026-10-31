@@ -71,6 +71,14 @@ CREATE TABLE IF NOT EXISTS connections (
     created_at TEXT NOT NULL
 );
 
+-- The FinTS institute list, when the user imported it: every bank's FinTS address.
+CREATE TABLE IF NOT EXISTS bank_directory (
+    blz TEXT NOT NULL,
+    name TEXT NOT NULL,
+    server TEXT,
+    PRIMARY KEY (blz, name)
+);
+
 CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY,
     connection_id INTEGER REFERENCES connections(id) ON DELETE SET NULL,

@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from .. import db, i18n, jobs, security, settings
+from ..bank import banks as bank_list
 from ..bank import sync
-from ..bank.fints_client import BANKS
 from ..jobs import UserFacingError
 from .deps import current_user
 
@@ -18,29 +18,84 @@ MAX_UPLOAD = 20 * 1024 * 1024
 
 
 class BankLogin(BaseModel):
-    bank_code: str = "50010517"
+    bank_code: str = Field(default="50010517", pattern=r"^\d{8}$")
+    server: str | None = Field(default=None, max_length=200)
     login: str = Field(min_length=1, max_length=40)
     pin: str = Field(min_length=1, max_length=64)
     product_id: str = Field(min_length=5, max_length=40)
+
+
+class TanAnswer(BaseModel):
+    tan: str | None = Field(default=None, max_length=64)
 
 
 class ConnectionUpdate(BaseModel):
     login: str | None = None
     pin: str | None = None
     product_id: str | None = None
+    server: str | None = Field(default=None, max_length=200)
 
 
 @router.get("/banks")
-def banks():
-    return [{"code": code, **{k: v for k, v in info.items() if k != "server"}} for code, info in BANKS.items()]
+def banks(q: str = ""):
+    """Banks matching a name, a Bankleitzahl or an IBAN, for the bank picker."""
+    with db.session() as conn:
+        return bank_list.search(conn, q[:60])
+
+
+@router.get("/banks/directory")
+def bank_directory():
+    with db.session() as conn:
+        return {"banks": bank_list.directory_size(conn)}
+
+
+@router.post("/banks/directory")
+async def import_bank_directory(file: UploadFile = File(...)):
+    """The FinTS institute list that comes with the product registration: every bank's server address."""
+    raw = await _read(file)
+    try:
+        with db.session() as conn:
+            return bank_list.import_directory(conn, raw)
+    except UserFacingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/banks/{blz}")
+def bank_by_code(blz: str):
+    with db.session() as conn:
+        try:
+            return bank_list.resolve(conn, blz)
+        except UserFacingError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/bank/test")
 def bank_test(body: BankLogin):
+    if body.server:
+        try:
+            bank_list.check_server(body.server)
+        except UserFacingError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     job = jobs.start(
-        "bank-test", sync.test_connection, body.bank_code, body.login.strip(), body.pin, body.product_id.strip()
+        "bank-test",
+        sync.test_connection,
+        body.bank_code,
+        body.login.strip(),
+        body.pin,
+        body.product_id.strip(),
+        body.server or None,
+        interactive=True,
     )
     return job.as_dict()
+
+
+@router.post("/jobs/{job_id}/tan")
+def job_tan(job_id: str, body: TanAnswer):
+    """The TAN the bank asked for, typed on the web page (or none, to cancel)."""
+    job = jobs.get(job_id)
+    if not job or not job.give_tan((body.tan or "").strip() or None):
+        raise HTTPException(status_code=409, detail="Nothing is waiting for a TAN.")
+    return {"ok": True}
 
 
 @router.get("/jobs/{job_id}")
@@ -56,7 +111,7 @@ def sync_now(full: bool = False):
     running = jobs.running("sync")
     if running:
         return running.as_dict()
-    return jobs.start("sync", sync.sync_all, full).as_dict()
+    return jobs.start("sync", sync.sync_all, full, interactive=True).as_dict()
 
 
 @router.post("/setup/finish")
@@ -81,7 +136,7 @@ def setup_finish():
             r = len(recurring.detect(conn))
         return {"categorized": n, "recurring": r}
 
-    return jobs.start("sync", first_run).as_dict()
+    return jobs.start("sync", first_run, interactive=True).as_dict()
 
 
 @router.post("/setup/complete")
@@ -104,11 +159,27 @@ def _connection_view(conn, c: dict) -> dict:
         )
     )
     due = (dt.datetime.fromisoformat(confirmed) + dt.timedelta(days=LOGIN_WINDOW_DAYS)).date()
+    try:
+        info = bank_list.resolve(conn, c["bank_code"])
+    except UserFacingError:
+        info = {
+            "short": c["bank_name"],
+            "label": c["bank_name"],
+            "app": None,
+            "login": "generic",
+            "id": "other",
+            "source": "none",
+        }
     return {
         "id": c["id"],
         "bank_code": c["bank_code"],
         "bank_name": c["bank_name"],
-        "short": BANKS.get(c["bank_code"], {}).get("short", c["bank_name"]),
+        "short": info["short"],
+        "label": info["label"] if info["source"] == "known" else c["bank_name"],
+        "bank_id": info["id"],
+        "app": info["app"],
+        "login_kind": info["login"],
+        "server": c["server"],
         "status": c["status"],
         "last_sync_at": c["last_sync_at"],
         "last_error": i18n.tr(c["last_error"]),
@@ -157,6 +228,14 @@ def update_connection(connection_id: int, body: ConnectionUpdate):
             conn.execute("UPDATE connections SET pin_enc = ? WHERE id = ?", (security.encrypt(body.pin), connection_id))
         if body.product_id:
             conn.execute("UPDATE connections SET product_id = ? WHERE id = ?", (body.product_id.strip(), connection_id))
+        if body.server:
+            try:
+                server = bank_list.check_server(body.server)
+            except UserFacingError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            conn.execute("UPDATE connections SET server = ?, state_enc = NULL WHERE id = ?", (server, connection_id))
+    if body.server:
+        sync.allow_bank_hosts()
     return {"ok": True}
 
 

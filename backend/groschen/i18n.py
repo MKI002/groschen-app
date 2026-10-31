@@ -90,28 +90,59 @@ DE = {
     "That file is larger than 20 MB.": "Die Datei ist größer als 20 MB.",
     # bank and imports
     "That bank connection no longer exists.": "Diese Bankverbindung gibt es nicht mehr.",
-    "This doesn't look like an ING CSV export. In ING banking, open the account, choose Umsätze and export as CSV.": (
-        "Das sieht nicht nach einem ING-CSV-Export aus. "
-        "Öffne im ING-Banking das Konto, wähle Umsätze und exportiere als CSV."
+    "This doesn't look like a bank's CSV export. In your online banking, open the account's "
+    "transactions and export them as CSV.": (
+        "Das sieht nicht nach dem CSV-Export einer Bank aus. "
+        "Öffne im Online-Banking die Umsätze des Kontos und exportiere sie als CSV."
     ),
-    "The CSV file is missing the Buchung or Betrag column.": "In der CSV-Datei fehlt die Spalte Buchung oder Betrag.",
-    "This bank isn't supported yet. For now Groschen connects to ING.": (
-        "Diese Bank wird noch nicht unterstützt. Im Moment verbindet sich Groschen mit der ING."
+    "The CSV file is missing the booking date or amount column.": (
+        "In der CSV-Datei fehlt die Spalte mit dem Buchungsdatum oder dem Betrag."
     ),
-    "ING didn't accept the access number or PIN. Check both and try again.": (
-        "Die ING hat Zugangsnummer oder PIN nicht akzeptiert. Prüf beides und versuch es noch einmal."
+    "A Bankleitzahl has 8 digits. It is also in your IBAN, right after DE and two digits.": (
+        "Eine Bankleitzahl hat 8 Ziffern. Sie steht auch in deiner IBAN, direkt nach DE und zwei Ziffern."
     ),
-    "Groschen couldn't reach ING. Check that the server has internet access and try again.": (
-        "Groschen hat die ING nicht erreicht. Prüf, ob der Server Internet hat, und versuch es noch einmal."
+    "The FinTS address must start with https:// and name the bank's server.": (
+        "Die FinTS-Adresse muss mit https:// beginnen und den Server der Bank nennen."
     ),
-    "ING returned an error: {text}": "Die ING hat einen Fehler gemeldet: {text}",
+    "Groschen doesn't know the FinTS address of this bank yet. Enter it under Advanced: "
+    "your bank lists it on its website (search for FinTS or HBCI PIN/TAN).": (
+        "Groschen kennt die FinTS-Adresse dieser Bank noch nicht. Trag sie unter „Erweitert“ ein: "
+        "Deine Bank nennt sie auf ihrer Website (such nach FinTS oder HBCI PIN/TAN)."
+    ),
+    "This isn't the FinTS institute list. It is the file with the columns BLZ, Institut and "
+    "PIN/TAN-Zugang URL that came with your product registration.": (
+        "Das ist nicht die FinTS-Institutsliste. Gemeint ist die Datei mit den Spalten BLZ, Institut und "
+        "PIN/TAN-Zugang URL, die du mit deiner Produktregistrierung bekommen hast."
+    ),
+    "Nothing is waiting for a TAN.": "Gerade wartet nichts auf eine TAN.",
+    "Enter the TAN your bank asks for.": "Gib die TAN ein, nach der deine Bank fragt.",
+    "{bank} didn't accept the login or PIN. Check both and try again.": (
+        "{bank} hat Anmeldename oder PIN nicht akzeptiert. Prüf beides und versuch es noch einmal."
+    ),
+    "{bank} has locked the online access for now. Unlock it in your online banking first.": (
+        "{bank} hat den Online-Zugang vorerst gesperrt. Entsperr ihn zuerst im Online-Banking."
+    ),
+    "{bank} refused the request. Log in to your online banking once, check that FinTS (HBCI) "
+    "access is turned on there, and try again. The bank said: {text}": (
+        "{bank} hat die Anfrage abgelehnt. Melde dich einmal im Online-Banking an, prüf, ob der "
+        "FinTS-Zugang (HBCI) dort eingeschaltet ist, und versuch es noch einmal. Die Bank sagt: {text}"
+    ),
+    "Groschen couldn't reach {bank}. Check that the server has internet access and the FinTS address is right.": (
+        "Groschen hat {bank} nicht erreicht. Prüf, ob der Server Internet hat und die FinTS-Adresse stimmt."
+    ),
+    "{bank} returned an error: {text}": "{bank} hat einen Fehler gemeldet: {text}",
+    "{bank} asked for a TAN. Press Sync now in Groschen while you have your TAN device, "
+    "and type the TAN when Groschen asks.": (
+        "{bank} hat nach einer TAN gefragt. Drück in Groschen auf „Jetzt abrufen“, wenn du dein TAN-Gerät "
+        "zur Hand hast, und gib die TAN ein, sobald Groschen fragt."
+    ),
     "A FinTS product ID is needed. You get one free from the Deutsche Kreditwirtschaft.": (
         "Es wird eine FinTS-Produkt-ID gebraucht. Du bekommst sie kostenlos von der Deutschen Kreditwirtschaft."
     ),
     "The approval in your banking app timed out. Try again when you have your phone.": (
         "Die Bestätigung in deiner Banking-App ist abgelaufen. Versuch es noch einmal, wenn du dein Handy zur Hand hast."
     ),
-    "Please approve the request in your ING app.": "Bitte bestätige die Anfrage in deiner ING-App.",
+    "Please approve the request in your banking app.": "Bitte bestätige die Anfrage in deiner Banking-App.",
     "Something went wrong: {text}": "Etwas ist schiefgelaufen: {text}",
     "Online ETF prices are turned off in Settings.": "Online-ETF-Kurse sind in den Einstellungen ausgeschaltet.",
     "ETF prices": "ETF-Kurse",
@@ -122,6 +153,9 @@ DE = {
     "Connecting to {bank}": "Verbinde mit {bank}",
     "Reading your accounts": "Lese deine Konten",
     "Connecting to the bank": "Verbinde mit der Bank",
+    "Connecting to your bank": "Verbinde mit deiner Bank",
+    "Fetching the last 90 days from your accounts": "Hole die letzten 90 Tage von deinen Konten",
+    "Merging with your imported history": "Führe sie mit deinem importierten Verlauf zusammen",
     "Fetching new transactions": "Hole neue Umsätze",
     "Categorizing": "Kategorisiere",
     "Categorizing {n} transactions": "Kategorisiere {n} Umsätze",
@@ -145,7 +179,7 @@ DE = {
     "Entered by hand": "Von Hand eingetragen",
     "{bank} · synced": "{bank} · abgerufen",
     "CSV import": "CSV-Import",
-    "ING purchase prices": "ING-Kaufkursen",
+    "your bank's purchase prices": "Kaufkursen deiner Bank",
     "payments into your depot": "Einzahlungen ins Depot",
     "Last 12 months": "Letzte 12 Monate",
     "Last 30 days": "Letzte 30 Tage",

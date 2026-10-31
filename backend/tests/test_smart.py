@@ -6,7 +6,7 @@ from test_categorize import _account, _add, _category
 
 from groschen import db, demo, jobs, settings
 from groschen.analytics import cashflow, refunds
-from groschen.bank import csv_ing, sync
+from groschen.bank import csv_import, sync
 from groschen.categorize import engine, names
 
 IBAN = "DE70500105171234567890"  # made up, with a valid check sum
@@ -330,13 +330,13 @@ def test_readable_second_line():
 
 
 def test_csv_without_header_lines_takes_iban_from_the_file_name_and_balance_from_the_rows():
-    parsed = csv_ing.parse(_csv(ROWS), f"Umsatzanzeige_{IBAN}_20261007.csv")
+    parsed = csv_import.parse(_csv(ROWS), f"Umsatzanzeige_{IBAN}_20261007.csv")
     assert parsed["iban"] == IBAN and parsed["balance"] == 1859.17 and parsed["holder"] is None
     assert len(parsed["rows"]) == 4
-    oldest_first = csv_ing.parse(_csv(ROWS[::-1]), "export.csv")
+    oldest_first = csv_import.parse(_csv(ROWS[::-1]), "export.csv")
     assert oldest_first["iban"] is None and oldest_first["balance"] == 1859.17
     wrong_sum = IBAN[:-1] + "1"
-    assert csv_ing.parse(_csv(ROWS), f"Umsatzanzeige_{wrong_sum}_20261007.csv")["iban"] is None
+    assert csv_import.parse(_csv(ROWS), f"Umsatzanzeige_{wrong_sum}_20261007.csv")["iban"] is None
 
 
 def test_csv_import_finds_its_account_and_keeps_the_newer_balance(run_job):

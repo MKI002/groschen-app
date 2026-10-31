@@ -431,7 +431,7 @@ def overview(conn, today: dt.date | None = None) -> dict:
         h["share"] = h["value"] / value if value else 0
         h["plan"] = _plan_amount(flows, h["isin"], today)
     paid_in = round(sum(h["cost"] for h in holdings), 2) if has_cost else round(sum(f["amount"] for f in flows), 2)
-    paid_in_source = i18n.t("ING purchase prices") if has_cost else i18n.t("payments into your depot")
+    paid_in_source = i18n.t("your bank's purchase prices") if has_cost else i18n.t("payments into your depot")
 
     first = conn.execute(
         "SELECT MIN(date) FROM (SELECT MIN(date) AS date FROM holding_history UNION SELECT MIN(date) FROM prices)"

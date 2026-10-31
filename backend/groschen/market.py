@@ -1,6 +1,6 @@
 """Online price history for the ETFs in the depot (opt-in, off until turned on in Settings).
 
-ING only sends today's price at each sync. With "Online ETF prices" on, Groschen asks
+Banks only send today's price at each sync. With "Online ETF prices" on, Groschen asks
 justETF for the daily price history of each ETF it knows. The request carries nothing
 but the ISIN in the address: no account, no key, no amounts, no personal data. The
 server is only let through the network guard while the setting is on, and every

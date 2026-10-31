@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BankForm, type TestResult } from "../components/BankForm";
+import { BankForm, TanPrompt, type TestResult } from "../components/BankForm";
 import { Icon, Logo } from "../components/Icons";
 import { LangPicker } from "../components/LangPicker";
 import { celebrate } from "../components/Motion";
@@ -343,7 +343,8 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
             </li>
           ))}
         </ul>
-        {finishJob?.state === "waiting" && (
+        <TanPrompt job={finishJob} />
+        {finishJob?.state === "waiting" && !finishJob.tan && (
           <div className="insight">
             <Icon name="bell" size={18} />
             <span>
