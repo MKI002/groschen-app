@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { CategoryPicker, forgetCategories, useCategories } from "../components/CategoryPicker";
+import { loginLabel } from "../components/BankForm";
 import { confirmBankLogin, openDialog } from "../components/Dialogs";
 import { Backups } from "../components/Backups";
 import { SecuritySettings } from "../components/Security";
@@ -98,12 +99,20 @@ function ChangeLogin({ c, onClose }: { c: Connection; onClose: () => void }) {
   const [login, setLogin] = useState("");
   const [pin, setPin] = useState("");
   const [product, setProduct] = useState("");
+  const [server, setServer] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   async function save() {
     setBusy(true);
-    await api.patch(`/connections/${c.id}`, { login: login || null, pin: pin || null, product_id: product || null });
-    toast(t("set.loginSaved"));
-    onClose();
+    setError(null);
+    try {
+      await api.patch(`/connections/${c.id}`, { login: login || null, pin: pin || null, product_id: product || null, server: server || null });
+      toast(t("set.loginSaved"));
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
   }
   return (
     <Modal
@@ -114,7 +123,7 @@ function ChangeLogin({ c, onClose }: { c: Connection; onClose: () => void }) {
           <button className="btn ghost" onClick={onClose}>
             {t("common.cancel")}
           </button>
-          <button className="btn primary" disabled={busy || (!login && !pin && !product)} onClick={save}>
+          <button className="btn primary" disabled={busy || (!login && !pin && !product && !server)} onClick={save}>
             {t("common.save")}
           </button>
         </>
@@ -122,7 +131,7 @@ function ChangeLogin({ c, onClose }: { c: Connection; onClose: () => void }) {
     >
       <p className="muted small">{t("set.onlyChanged")}</p>
       <div className="field">
-        <label htmlFor="cl-login">Zugangsnummer</label>
+        <label htmlFor="cl-login">{loginLabel(c.login_kind)}</label>
         <input className="input" id="cl-login" autoComplete="off" placeholder={c.login_hint} value={login} onChange={(e) => setLogin(e.target.value.trim())} />
       </div>
       <div className="field">
@@ -133,6 +142,16 @@ function ChangeLogin({ c, onClose }: { c: Connection; onClose: () => void }) {
         <label htmlFor="cl-product">{t("bank.product")}</label>
         <input className="input" id="cl-product" autoComplete="off" value={product} onChange={(e) => setProduct(e.target.value.trim())} />
       </div>
+      <div className="field">
+        <label htmlFor="cl-server">{t("bank.server")}</label>
+        <input className="input" id="cl-server" autoComplete="off" placeholder={c.server} value={server} onChange={(e) => setServer(e.target.value.trim())} />
+        <span className="hint">{t("bank.serverHint")}</span>
+      </div>
+      {error && (
+        <p className="err" role="alert">
+          {error}
+        </p>
+      )}
     </Modal>
   );
 }
@@ -152,10 +171,10 @@ function ConnectionCard({ c, reminder }: { c: Connection; reminder: number }) {
     refresh();
   }
   async function disconnect() {
-    const ok = await confirm({ title: t("set.disconnectTitle"), text: t("set.confirmDisconnect"), action: t("set.disconnect") });
+    const ok = await confirm({ title: t("set.disconnectTitle", { bank: c.label }), text: t("set.confirmDisconnect"), action: t("set.disconnect") });
     if (!ok) return;
     await api.del(`/connections/${c.id}`);
-    toast(t("set.disconnected"));
+    toast(t("set.disconnected", { bank: c.label }));
     refresh();
   }
 
@@ -178,7 +197,7 @@ function ConnectionCard({ c, reminder }: { c: Connection; reminder: number }) {
           {syncing ? <Spinner /> : <Icon name="refresh" size={15} />}
           {t("shell.syncNow")}
         </button>
-        {/* Always there: Groschen can't see a login in the ING app, so it is told right after. */}
+        {/* Always there: Groschen can't see a login in the bank's app, so it is told right after. */}
         <button className="btn sm" onClick={() => confirmBankLogin(c, toast, refresh)}>
           <Icon name="check" size={15} />
           {t("set.loggedIn")}
@@ -196,7 +215,7 @@ function ConnectionCard({ c, reminder }: { c: Connection; reminder: number }) {
         <div className="meter">
           <span className={tone} style={{ width: `${Math.max(3, (left / 90) * 100)}%` }} />
         </div>
-        <small className="muted small">{t("set.loginExplain", { due: dateShort(c.login_due), n: reminder, button: t("set.loggedIn") })}</small>
+        <small className="muted small">{t("set.loginExplain", { bank: c.label, due: dateShort(c.login_due), n: reminder, button: t("set.loggedIn") })}</small>
       </div>
       <div className="conn-accounts">
         <span className="label">{t("set.accountsShown")}</span>
@@ -212,7 +231,7 @@ function ConnectionCard({ c, reminder }: { c: Connection; reminder: number }) {
             {t("set.fetch90.btn")}
           </button>
         </Row>
-        <Row title={t("set.disconnectRow")} sub={t("set.disconnect.sub")}>
+        <Row title={t("set.disconnectRow", { bank: c.label })} sub={t("set.disconnect.sub")}>
           <button className="btn sm ghost danger" onClick={disconnect}>
             {t("set.disconnect")}
           </button>
@@ -258,8 +277,50 @@ function CsvImport() {
         </label>
         <input id="set-csv" type="file" accept=".csv,text/csv" multiple hidden onChange={(e) => upload(e.target.files)} />
       </Row>
+      <InstituteList />
       {error && <p className="err">{error}</p>}
     </Card>
+  );
+}
+
+// The FinTS institute list from the product registration: every bank's FinTS address, so
+// a Sparkasse can be connected by its Bankleitzahl alone.
+function InstituteList() {
+  const toast = useToast();
+  useT();
+  const [known, setKnown] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    api.get<{ banks: number }>("/banks/directory").then((r) => setKnown(r.banks)).catch(() => {});
+  }, []);
+  async function upload(files: FileList | null) {
+    const f = files?.[0];
+    if (!f) return;
+    setBusy(true);
+    setError(null);
+    const form = new FormData();
+    form.append("file", f);
+    try {
+      const r = await api.upload<{ banks: number }>("/banks/directory", form);
+      setKnown(r.banks);
+      toast(t("set.directory.done", { n: r.banks }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+  return (
+    <>
+      <Row title={t("set.directory")} sub={known ? t("set.directory.has", { n: known }) : t("set.directory.sub")}>
+        <label className="btn sm" htmlFor="set-institutes">
+          {busy ? <Spinner /> : <Icon name="upload" size={15} />}
+          {t("set.directory.choose")}
+        </label>
+        <input id="set-institutes" type="file" accept=".csv,text/csv" hidden onChange={(e) => upload(e.target.files)} />
+      </Row>
+      {error && <p className="err">{error}</p>}
+    </>
   );
 }
 
@@ -688,7 +749,14 @@ export default function Settings() {
   const panels: Record<Tab, ReactNode> = {
     bank: (
       <>
-        <Card title={t("set.banks")} right={!connections.length && <button className="btn sm primary" onClick={() => openDialog({ kind: "connect" })}>{t("shell.connectIng")}</button>}>
+        <Card
+          title={t("set.banks")}
+          right={
+            <button className={`btn sm${connections.length ? "" : " primary"}`} onClick={() => openDialog({ kind: "connect" })}>
+              {connections.length ? t("set.addBank") : t("shell.connectBank")}
+            </button>
+          }
+        >
           {connections.map((c) => (
             <ConnectionCard key={c.id} c={c} reminder={v.reminder_days} />
           ))}

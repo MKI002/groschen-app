@@ -11,7 +11,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/MKI002/groschen-app/issues</Support>
   <Project>https://github.com/MKI002/groschen-app</Project>
-  <Overview>Private finance dashboard for ING Germany. Syncs your accounts over FinTS, categorizes on this server with a built-in model, and never connects to anything but your bank. Everything is set up in the web page.</Overview>
+  <Overview>Private finance dashboard for German bank accounts (Sparkasse, Volksbank, ING, DKB, Deutsche Bank and more). Syncs your accounts over FinTS, categorizes on this server with a built-in model, and never connects to anything but your bank. Everything is set up in the web page.</Overview>
   <Category>Productivity: Tools:</Category>
   <WebUI>http://[IP]:[PORT:8420]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/MKI002/groschen-app/main/unraid/groschen.xml</TemplateURL>

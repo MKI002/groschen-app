@@ -348,13 +348,13 @@ class FakeBank:
         self.data = data
         self.needs_approval = needs_approval
 
-    def __call__(self, bank_code, login, pin, product_id, state=None, on_wait=None):
+    def __call__(self, bank_code, login, pin, product_id, state=None, on_wait=None, server=None, on_tan=None):
         from .jobs import UserFacingError
 
         if pin != DEMO_PIN or not product_id:
-            raise UserFacingError("ING didn't accept the access number or PIN. Check both and try again.")
+            raise UserFacingError("ING didn't accept the login or PIN. Check both and try again.")
         if self.needs_approval and on_wait:
-            on_wait("Please approve the request in your ING app.")
+            on_wait("Please approve the request in your banking app.")
         return _FakeSession(self.data, approved=self.needs_approval)
 
 

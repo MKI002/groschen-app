@@ -5,7 +5,7 @@
 <h1 align="center">Groschen</h1>
 
 <p align="center">
-  <b>A private, self-hosted finance dashboard for ING Germany.</b><br>
+  <b>A private, self-hosted finance dashboard for German bank accounts.</b><br>
   Runs as one Docker container on your own server, sorts your money by itself with a small
   built-in AI model, and talks to nobody on the internet except your bank.
 </p>
@@ -57,7 +57,7 @@
 
 - [What's inside](#whats-inside)
 - [Privacy and network](#privacy-and-network)
-- [ING: what to know](#ing-what-to-know)
+- [Banks: what to know](#banks-what-to-know)
 - [Install](#install)
 - [Updates](#updates)
 - [Try it with demo data](#try-it-with-demo-data)
@@ -65,7 +65,7 @@
 
 ## What's inside
 
-- **Setup wizard** on first start: your login, the ING connection, CSV import of older history,
+- **Setup wizard** on first start: your login, the bank connection, CSV import of older history,
   categorizer and schedule, first sync.
 - **Overview**: what is free to spend until payday, with every charge still to come on a line to
   payday, a few hints worth a look, and where the money went (as a flow, a timeline or by month).
@@ -99,8 +99,8 @@
 
 ## Privacy and network
 
-- The only outgoing connection is to `fints.ing.de`, plus `www.justetf.com` once you switch on
-  Online ETF prices. A guard inside the app refuses every other address, and
+- The only outgoing connections are to the FinTS servers of the banks you connected (for ING
+  `fints.ing.de`), plus `www.justetf.com` once you switch on Online ETF prices. A guard inside the app refuses every other address, and
   **Settings → Export & privacy** shows a log of every connection it made.
 - No update checks, analytics, web fonts or map tiles. Fonts, icons and charts are built in.
 - The bank PIN is stored encrypted. The key is `secret.key` in the data folder and is never
@@ -108,22 +108,50 @@
 - Nothing secret lives in this repository. The image is built by GitHub from the code alone.
 - Don't forward port 8420 on your router. For access from outside, use Tailscale or WireGuard.
 
-## ING: what to know
+## Banks: what to know
+
+Groschen talks to German banks over **FinTS** (also called HBCI), read-only, and imports their
+**CSV exports** for older history or for banks without FinTS. Pick your bank in the wizard or under
+**Settings → Bank & import** by name, Bankleitzahl or IBAN.
+
+| Bank | FinTS | Approve in | CSV import |
+| --- | --- | --- | --- |
+| ING | built in | ING App (rarely asked) | Umsatzanzeige |
+| Sparkassen | Bankleitzahl plus the FinTS address, from the institute list or the Sparkasse's website | S-pushTAN | CSV-CAMT, CSV-MT940 |
+| Volksbanken, Raiffeisenbanken, Sparda-, PSD-, GLS Bank | built in (Atruvia), by Bankleitzahl | VR SecureGo plus | yes |
+| Deutsche Bank, norisbank | built in, by Bankleitzahl | photoTAN, BestSign | yes, with Soll and Haben columns |
+| Postbank | built in, by Bankleitzahl | BestSign | yes |
+| Commerzbank | built in, by Bankleitzahl | photoTAN | yes |
+| comdirect | built in | photoTAN push | yes |
+| DKB | built in | DKB App | old and new layout |
+| Consorsbank | built in | SecurePlus | yes |
+| HypoVereinsbank | built in | HVB app | generic |
+| N26, Trade Republic, Revolut, C24 | no FinTS at these banks | | CSV only |
+
+Only ING has been used with a real account so far. The others follow each bank's published FinTS
+access and CSV layout; if one refuses, Settings shows what the bank said. Banks not in the table
+work too: type the Bankleitzahl and the FinTS address from the bank's website.
 
 - **FinTS product ID.** Every FinTS program needs a free product ID from the Deutsche
   Kreditwirtschaft. Search for "FinTS Produktregistrierung" (the form is on hbci-zka.de), choose
-  private use and give "Groschen" as the product name. The ID arrives by email, usually within a
-  few days. Until then you can import ING CSV files.
-- **Login every 90 days.** ING asks you to log in to online banking or the app at least once every
-  90 days, otherwise FinTS access pauses. Groschen reminds you ahead of time; press "I logged in to
-  ING" in Settings afterwards.
-- **History.** FinTS returns about 90 days. For older transactions, export CSV files in ING
-  banking (Umsätze → Export) and import them in the wizard or in Settings. Duplicates are skipped.
-  The file finds its account by itself (by the IBAN in the file or its name) and takes the balance
-  from the file, even when its first lines were cut off.
-- **Depot.** Holdings and prices come over FinTS. ING only sends today's prices, so Groschen records
-  them at every sync. For older price history, import a file with one line per day:
-  `date;ISIN;price`.
+  private use and give "Groschen" as the product name. The ID arrives by email. Until then you can
+  import CSV files. One ID works for every bank.
+- **Institute list.** With the registration you can get the FinTS institute list, a CSV with every
+  bank's FinTS address. Import it under Settings → Bank & import, and a Sparkasse is found by its
+  Bankleitzahl alone. It stays on your server.
+- **Approvals and TANs.** Groschen picks the bank's app approval (pushTAN, SecureGo plus, BestSign,
+  photoTAN push) when the bank offers one, and waits up to three minutes for you to confirm. If a
+  bank wants a typed TAN (chipTAN, smsTAN, photoTAN picture), Groschen asks for it on the page
+  during a sync you start; a sync at night can't, and says so.
+- **Login every 90 days.** Banks ask you to log in or confirm a request at least once every 90
+  days (PSD2), otherwise FinTS access pauses. Groschen reminds you ahead of time. A sync you approve
+  in the app counts by itself; after a plain login press "I logged in to my bank" in Settings.
+- **History.** FinTS returns about 90 days. For older transactions, export CSV files in your online
+  banking and import them in the wizard or in Settings. Duplicates are skipped. The file finds its
+  account by itself (by the IBAN in the file or its name) and takes the balance from the file.
+- **Depot.** Holdings and prices come over FinTS where the bank offers it. Banks only send today's
+  prices, so Groschen records them at every sync. For older price history, import a file with one
+  line per day: `date;ISIN;price`.
 
 ## Install
 
@@ -258,7 +286,7 @@ the next build prints the new ones as a note on the run.
 
 ```
 backend/groschen/
-  bank/         FinTS client, ING CSV import, storing transactions, sync
+  bank/         bank list, FinTS client, CSV import for German banks, storing transactions, sync
   categorize/   rules, merchant list, model, learning
   analytics/    cash flow, net worth, portfolio statistics, subscriptions, savings plans
   api/          HTTP endpoints

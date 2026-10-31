@@ -19,6 +19,26 @@ export type Job<R = Record<string, unknown>> = {
   steps: JobStep[];
   result: R | null;
   error: string | null;
+  // The bank's TAN request while the job waits for one.
+  tan?: { text: string; image: string | null } | null;
+};
+
+export type BankLoginKind = "zugangsnummer" | "sparkasse" | "vr" | "deutschebank" | "postbank" | "commerzbank" | "dkb" | "consors" | "generic";
+
+// A bank from the picker: what Groschen knows about it, and what it still needs from the user.
+export type BankInfo = {
+  id: string;
+  name: string;
+  label: string;
+  short: string;
+  blz: string | null;
+  server: string | null;
+  login: BankLoginKind;
+  app: string | null;
+  tested: boolean;
+  needs_blz: boolean;
+  needs_server: boolean;
+  source: "known" | "list" | "group" | "none" | "csv";
 };
 
 export type BankAccount = {
@@ -37,6 +57,11 @@ export type Connection = {
   bank_code: string;
   bank_name: string;
   short: string;
+  label: string;
+  bank_id: string;
+  app: string | null;
+  login_kind: BankLoginKind;
+  server: string;
   status: string;
   last_sync_at: string | null;
   last_error: string | null;
