@@ -159,16 +159,16 @@ def test_learned_merchants_can_be_changed_and_forgotten(client_logged_in, conn):
     gaming = conn.execute("SELECT id FROM categories WHERE name = 'Gaming'").fetchone()[0]
     client_logged_in.patch(f"/api/transactions/{ids[0]}", json={"category_id": streaming})
     learned = client_logged_in.get("/api/learned").json()
-    assert [(m["key"], m["category"]) for m in learned] == [("AQUA NETWORKS LIMITED", "Streaming")]
+    assert [(m["key"], m["category"]) for m in learned] == [("AQUANETWORKSLIMITED", "Streaming")]
     assert learned[0]["name"] == "Aqua Networks"  # what lists show for it
 
-    r = client_logged_in.put("/api/learned", json={"key": "AQUA NETWORKS LIMITED", "category_id": gaming})
+    r = client_logged_in.put("/api/learned", json={"key": "AQUANETWORKSLIMITED", "category_id": gaming})
     assert r.json()["changed"] == 1
     conn.rollback()
     assert _category(conn, ids[1]) == "Gaming"
     assert _category(conn, ids[0]) == "Streaming"  # set by hand, stays
 
-    client_logged_in.delete("/api/learned", params={"key": "AQUA NETWORKS LIMITED"})
+    client_logged_in.delete("/api/learned", params={"key": "AQUANETWORKSLIMITED"})
     assert client_logged_in.get("/api/learned").json() == []
     conn.rollback()
     assert conn.execute("SELECT cat_source FROM transactions WHERE id = ?", (ids[1],)).fetchone()[0] != "memory"
@@ -179,12 +179,10 @@ def test_subscription_marks_through_the_api(client_logged_in, conn):
     tx = _aqua(conn, acc, "2026-09-11", -9.99, "3")
     conn.commit()
     r = client_logged_in.post(f"/api/transactions/{tx}/subscription", json={"state": "yes"})
-    assert r.json()["key"] == "AQUA NETWORKS LIMITED"
+    assert r.json()["key"] == "AQUANETWORKSLIMITED"
     page = client_logged_in.get("/api/transactions").json()
     assert page["items"][0]["subscription"] == "yes"
-    assert client_logged_in.post("/api/subscriptions/mark", json={"key": "AQUA NETWORKS LIMITED", "state": "no"}).json()[
-        "ok"
-    ]
+    assert client_logged_in.post("/api/subscriptions/mark", json={"key": "AQUANETWORKSLIMITED", "state": "no"}).json()["ok"]
     assert client_logged_in.post("/api/subscriptions/mark", json={"key": "X", "state": "maybe"}).status_code == 422
 
 
@@ -257,7 +255,7 @@ def test_a_new_subscription_is_recognized(conn):
     sub = _names(conn)["Apple"]
     assert sub["status"] == "new" and sub["new_since"] == "2026-09-09"
     event = next(e for e in recurring.overview(conn, TODAY)["events"] if e["kind"] == "new")
-    assert (event["name"], event["since"], event["key"]) == ("Apple", "2026-07-09", "sub:new:APPLE SERVICES")
+    assert (event["name"], event["since"], event["key"]) == ("Apple", "2026-07-09", "sub:new:APPLESERVICES")
 
 
 def test_a_streaming_service_seen_twice_needs_no_question(conn):
