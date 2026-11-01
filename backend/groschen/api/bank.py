@@ -1,13 +1,15 @@
 """Bank connections, syncing, imports and background jobs."""
 
 import datetime as dt
+import json
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from .. import db, i18n, jobs, security, settings
+from .. import db, fx, i18n, jobs, security, settings
 from ..bank import banks as bank_list
-from ..bank import sync
+from ..bank import csv_import, store, sync
 from ..jobs import UserFacingError
 from .deps import current_user
 
@@ -251,6 +253,7 @@ def delete_connection(connection_id: int):
 class AccountToggle(BaseModel):
     enabled: bool | None = None
     name: str | None = None
+    currency: str | None = None
 
 
 @router.patch("/accounts/{account_id}")
@@ -260,6 +263,14 @@ def update_account(account_id: int, body: AccountToggle):
             conn.execute("UPDATE accounts SET enabled = ? WHERE id = ?", (int(body.enabled), account_id))
         if body.name:
             conn.execute("UPDATE accounts SET name = ? WHERE id = ?", (body.name.strip()[:60], account_id))
+        if body.currency:
+            try:
+                store.set_account_currency(conn, account_id, body.currency)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            fx.apply(conn)
+    if body.currency:
+        fx.after_change()
     return {"ok": True}
 
 
@@ -270,13 +281,33 @@ async def _read(file: UploadFile) -> bytes:
     return raw
 
 
+PICK_COLUMNS = "Pick the column with the date and the one with the amount."
+
+
 @router.post("/import/csv")
-async def import_csv(file: UploadFile = File(...), account_id: int | None = Form(default=None)):
+async def import_csv(
+    file: UploadFile = File(...),
+    account_id: int | None = Form(default=None),
+    mapping: str | None = Form(default=None, max_length=2000),
+):
+    """Import a bank's CSV export. A file Groschen can't read alone answers 422 with its first rows
+    under "mapping"; the page asks which column is which and sends the file again with ``mapping``."""
     raw = await _read(file)
-    job = jobs.run_inline("import", sync.import_csv, raw, account_id, file.filename)
-    if job.state == "error":
-        raise HTTPException(status_code=400, detail=job.error)
-    return {**job.result, "file": file.filename}
+    picked = None
+    if mapping:
+        try:
+            picked = json.loads(mapping)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=PICK_COLUMNS) from exc
+        if not isinstance(picked, dict):
+            raise HTTPException(status_code=400, detail=PICK_COLUMNS)
+    try:
+        result = sync.import_csv(jobs.Job(id="import", kind="import"), raw, account_id, file.filename, picked)
+    except csv_import.NeedsMapping as exc:
+        return JSONResponse(status_code=422, content={"detail": i18n.tr(str(exc)), "mapping": exc.preview})
+    except UserFacingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {**result, "file": file.filename}
 
 
 @router.post("/import/prices")

@@ -5,7 +5,7 @@ import hashlib
 import re
 from collections import Counter
 
-from .. import db
+from .. import db, regions
 
 
 def _norm(text: str | None) -> str:
@@ -93,10 +93,13 @@ def nice_name(acc: dict) -> str:
 
 
 def set_balance(conn, account_id: int, balance: float, date: str) -> None:
-    conn.execute("UPDATE accounts SET balance = ?, balance_date = ? WHERE id = ?", (balance, date, account_id))
+    """The balance in the account's own currency; fx.apply converts it when that isn't the home currency."""
+    conn.execute(
+        "UPDATE accounts SET balance = ?, orig_balance = NULL, balance_date = ? WHERE id = ?", (balance, date, account_id)
+    )
     conn.execute(
         "INSERT INTO balance_history (account_id, date, balance) VALUES (?, ?, ?) "
-        "ON CONFLICT(account_id, date) DO UPDATE SET balance = excluded.balance",
+        "ON CONFLICT(account_id, date) DO UPDATE SET balance = excluded.balance, orig_balance = NULL",
         (account_id, date, balance),
     )
 
@@ -104,7 +107,10 @@ def set_balance(conn, account_id: int, balance: float, date: str) -> None:
 def _csv_twins(conn, account_id: int) -> dict[tuple[str, float], list[str]]:
     twins: dict[tuple[str, float], list[str]] = {}
     for r in conn.execute(
-        "SELECT date, amount, counterparty FROM transactions WHERE account_id = ? AND source = 'csv'", (account_id,)
+        # What the bank booked: in another currency, amount is the converted value.
+        "SELECT date, COALESCE(orig_amount, amount) AS amount, counterparty FROM transactions "
+        "WHERE account_id = ? AND source = 'csv'",
+        (account_id,),
     ):
         twins.setdefault((r["date"], round(r["amount"], 2)), []).append(_name(r["counterparty"]))
     return twins
@@ -171,7 +177,10 @@ def filter_csv_overlap(conn, account_id: int, rows: list[dict]) -> tuple[list[di
         "SELECT MIN(date) FROM transactions WHERE account_id = ? AND source = 'fints'", (account_id,)
     ).fetchone()[0]
     existing = {}
-    for r in conn.execute("SELECT date, amount, counterparty FROM transactions WHERE account_id = ?", (account_id,)):
+    for r in conn.execute(
+        "SELECT date, COALESCE(orig_amount, amount) AS amount, counterparty FROM transactions WHERE account_id = ?",
+        (account_id,),
+    ):
         existing.setdefault((r["date"], round(r["amount"], 2)), []).append(_name(r["counterparty"]))
     keep, skipped = [], 0
     for row in rows:
@@ -222,3 +231,28 @@ def save_holdings(conn, account_id: int, holdings: list[dict], today: str | None
             )
     set_balance(conn, account_id, round(total, 2), today)
     return total
+
+
+def set_account_currency(conn, account_id: int, currency: str) -> None:
+    """The user says what currency an account is in (a file that didn't say). Its bookings in the
+    old currency are in the new one; fx.apply converts them afterwards."""
+    code = (currency or "").upper()
+    if code not in regions.CURRENCIES:
+        raise ValueError("Groschen doesn't know that currency.")
+    row = conn.execute("SELECT currency FROM accounts WHERE id = ?", (account_id,)).fetchone()
+    if not row or row[0] == code:
+        return
+    old = row[0]
+    conn.execute(
+        "UPDATE transactions SET currency = ?, amount = COALESCE(orig_amount, amount), orig_amount = NULL, fx_rate = NULL "
+        "WHERE account_id = ? AND currency = ?",
+        (code, account_id, old),
+    )
+    conn.execute(
+        "UPDATE accounts SET currency = ?, balance = COALESCE(orig_balance, balance), orig_balance = NULL WHERE id = ?",
+        (code, account_id),
+    )
+    conn.execute(
+        "UPDATE balance_history SET balance = COALESCE(orig_balance, balance), orig_balance = NULL WHERE account_id = ?",
+        (account_id,),
+    )

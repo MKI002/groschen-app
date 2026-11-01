@@ -13,6 +13,7 @@ def _account_rows(conn) -> list[dict]:
     return db.rows(
         conn.execute(
             "SELECT a.id, a.name, a.kind, a.iban, a.balance, a.balance_date, a.manual, a.connection_id, a.enabled, "
+            "a.currency, a.orig_balance, a.fx_ok AS counted, "
             "c.bank_name FROM accounts a LEFT JOIN connections c ON c.id = a.connection_id ORDER BY a.manual, a.id"
         )
     )
@@ -29,9 +30,11 @@ def overview(conn, today: dt.date | None = None) -> dict:
             a["source"] = i18n.t("{bank} · synced", bank=(a["bank_name"] or "Bank").split()[0])
         else:
             a["source"] = i18n.t("CSV import")
-    assets = round(sum(a["balance"] for a in accounts if a["side"] == "asset"), 2)
-    liabilities = round(sum(a["balance"] for a in accounts if a["side"] == "liability"), 2)
-    series = history(conn, accounts, today)
+    # An account in another currency without an exchange rate is shown, but not added up.
+    counted = [a for a in accounts if a["counted"]]
+    assets = round(sum(a["balance"] for a in counted if a["side"] == "asset"), 2)
+    liabilities = round(sum(a["balance"] for a in counted if a["side"] == "liability"), 2)
+    series = history(conn, counted, today)
     start_of_year = next((p["value"] for p in series if p["month"] == f"{today.year - 1}-12"), None)
     if start_of_year is None and series:
         first_this_year = [p for p in series if p["month"].startswith(str(today.year))]

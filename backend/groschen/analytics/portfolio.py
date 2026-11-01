@@ -41,7 +41,7 @@ class Prices:
 
 
 def depot_accounts(conn) -> list[dict]:
-    return db.rows(conn.execute("SELECT id, name, balance FROM accounts WHERE kind = 'depot' AND enabled = 1"))
+    return db.rows(conn.execute("SELECT id, name, balance FROM accounts WHERE kind = 'depot' AND enabled = 1 AND fx_ok = 1"))
 
 
 # Bookings that look like buying or selling securities, whatever category they ended up in.
@@ -420,7 +420,8 @@ def overview(conn, today: dt.date | None = None) -> dict:
     holdings = db.rows(
         conn.execute(
             "SELECT h.account_id, h.isin, h.name, h.pieces, h.price, h.price_date, h.value, h.acquisition_price "
-            "FROM holdings h JOIN accounts a ON a.id = h.account_id WHERE a.enabled = 1 ORDER BY h.value DESC"
+            "FROM holdings h JOIN accounts a ON a.id = h.account_id "
+            "WHERE a.enabled = 1 AND a.fx_ok = 1 ORDER BY h.value DESC"
         )
     )
     value = round(sum(h["value"] for h in holdings), 2)

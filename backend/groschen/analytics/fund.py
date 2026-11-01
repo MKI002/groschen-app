@@ -439,7 +439,8 @@ def detail(conn, isin: str, today: dt.date | None = None) -> dict | None:
             "SELECT MAX(h.name) AS name, SUM(h.pieces) AS pieces, MAX(h.price) AS price, MAX(h.price_date) AS price_date, "
             "SUM(h.value) AS value, SUM(h.pieces * h.acquisition_price) AS cost, "
             "SUM(CASE WHEN h.acquisition_price IS NULL THEN 1 ELSE 0 END) AS no_cost "
-            "FROM holdings h JOIN accounts a ON a.id = h.account_id WHERE a.enabled = 1 AND h.isin = ? GROUP BY h.isin",
+            "FROM holdings h JOIN accounts a ON a.id = h.account_id "
+            "WHERE a.enabled = 1 AND a.fx_ok = 1 AND h.isin = ? GROUP BY h.isin",
             (isin,),
         )
     )
@@ -447,7 +448,8 @@ def detail(conn, isin: str, today: dt.date | None = None) -> dict | None:
     if not holding and not series:
         return None
     total = conn.execute(
-        "SELECT COALESCE(SUM(h.value), 0) FROM holdings h JOIN accounts a ON a.id = h.account_id WHERE a.enabled = 1"
+        "SELECT COALESCE(SUM(h.value), 0) FROM holdings h JOIN accounts a ON a.id = h.account_id "
+        "WHERE a.enabled = 1 AND a.fx_ok = 1"
     ).fetchone()[0]
     rf = float(settings.get(conn, "risk_free_rate") or 0)
     rk = risk(series, rf)

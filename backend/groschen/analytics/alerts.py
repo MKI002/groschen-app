@@ -64,7 +64,7 @@ def _load(conn, since: str, until: str) -> list[dict]:
             "SELECT t.id, t.date, t.amount, t.counterparty, t.purpose, t.account_id, t.category_id, "
             "c.name AS category, c.kind AS cat_kind, a.name AS account FROM transactions t "
             "JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = t.category_id "
-            "WHERE a.enabled = 1 AND t.date >= ? AND t.date <= ? ORDER BY t.date, t.id",
+            "WHERE a.enabled = 1 AND a.fx_ok = 1 AND t.date >= ? AND t.date <= ? ORDER BY t.date, t.id",
             (since, until),
         )
     )

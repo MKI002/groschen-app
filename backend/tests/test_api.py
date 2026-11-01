@@ -28,6 +28,7 @@ def test_first_run_flow(client, run_job, demo_data, monkeypatch):
         "has_user": False,
         "setup_complete": False,
         "language": None,
+        "region": None,
         "user": None,
         "passkeys": False,
         "password_login": True,

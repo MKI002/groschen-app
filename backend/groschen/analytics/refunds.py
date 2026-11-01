@@ -95,7 +95,7 @@ def candidates(conn, tx_id: int, q: str = "") -> list[dict]:
             "COALESCE((SELECT SUM(r.amount) FROM refund_links l JOIN transactions r ON r.id = l.refund_id "
             "WHERE l.purchase_id = t.id AND l.refund_id != ?), 0) AS refunded "
             "FROM transactions t JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = t.category_id "
-            "WHERE t.amount < 0 AND t.date >= ? AND t.date <= ? AND a.enabled = 1 AND a.kind != 'depot' "
+            "WHERE t.amount < 0 AND t.date >= ? AND t.date <= ? AND a.enabled = 1 AND a.fx_ok = 1 AND a.kind != 'depot' "
             "AND (t.cat_source IS NULL OR t.cat_source NOT IN ('own', 'transfer')) ORDER BY t.date DESC, t.id DESC",
             (tx_id, since, tx["date"]),
         )
