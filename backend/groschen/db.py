@@ -355,6 +355,12 @@ def init() -> None:
             conn.execute("INSERT INTO meta (key, value) VALUES ('refund_links', '1')")
         known = conn.execute("SELECT value FROM meta WHERE key = 'knowledge'").fetchone()
         stale = known is None or int(known[0]) < KNOWLEDGE
+        if conn.execute("SELECT 1 FROM meta WHERE key = 'merchant_keys'").fetchone() is None:
+            # Merchant keys stopped counting spaces: rewrite saved ones, then sort again so one
+            # merchant spelled two ways gets one category.
+            engine.migrate_merchant_keys(conn)
+            conn.execute("INSERT INTO meta (key, value) VALUES ('merchant_keys', '2')")
+            stale = stale or known is not None
         if upgrade_categories(conn) or stale:
             # New built-in categories or merchants: sort the existing bookings again (never the user's own choices).
             engine.reapply_quick(conn)
