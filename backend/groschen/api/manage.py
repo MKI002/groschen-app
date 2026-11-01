@@ -239,8 +239,14 @@ def list_learned():
                 "FROM merchant_memory m JOIN categories c ON c.id = m.category_id ORDER BY m.updated_at DESC, m.key"
             )
         )
+        # Keys have no spaces ("AQUANETWORKS"), so the name comes from the newest booking with that merchant.
+        shown: dict[str, str] = {}
+        if rows:
+            for t in conn.execute("SELECT counterparty, purpose, booking_text FROM transactions ORDER BY date"):
+                t = dict(t)
+                shown[engine.merchant_key(t)] = names.display_name(t)
     for r in rows:
-        r["name"] = names.clean(r["key"].upper()) or r["key"]
+        r["name"] = shown.get(r["key"]) or names.clean(r["key"].upper()) or r["key"]
     return rows
 
 

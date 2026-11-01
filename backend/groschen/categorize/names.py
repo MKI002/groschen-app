@@ -7,6 +7,7 @@ stays on the booking and is shown in its details; only the name in lists changes
 """
 
 import re
+import unicodedata
 
 # Well-known names, matched against the payee as the bank sends it (upper-cased). First match wins.
 BRANDS: list[tuple[re.Pattern, str]] = [
@@ -210,3 +211,12 @@ def display_name(tx: dict) -> str:
     if booking and booking.lower() not in PLAIN_TEXTS:
         return booking[:60]
     return (purpose or booking or "Unknown")[:60]
+
+
+def name_key(name: str) -> str:
+    """What two shown names must share to be one merchant: case, accents, spaces and dots don't count.
+
+    Banks write the same payee as "AquaNetworks" one month and "Aqua Networks" the next.
+    """
+    folded = unicodedata.normalize("NFKD", (name or "").casefold())
+    return "".join(c for c in folded if c.isalnum())

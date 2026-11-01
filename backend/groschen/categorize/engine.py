@@ -151,7 +151,16 @@ def _clean(s: str) -> str:
 
 
 def merchant_key(tx: dict) -> str:
-    """A stable, normalized name for the merchant behind a transaction."""
+    """A stable, normalized name for the merchant behind a transaction.
+
+    Spaces don't count, so the same merchant spelled "AquaNetworks" and "Aqua Networks" by the
+    bank is one merchant. Keys stored before that (with spaces) are rewritten once by
+    migrate_merchant_keys.
+    """
+    return _spaced_key(tx).replace(" ", "")
+
+
+def _spaced_key(tx: dict) -> str:
     cp = (tx.get("counterparty") or "").strip()
     purpose = (tx.get("purpose") or "").strip()
     if "PAYPAL" in cp.upper() or not cp:
@@ -731,3 +740,46 @@ def forget(conn, key: str) -> int:
     marks = ",".join("?" * len(ids))
     conn.execute(f"UPDATE transactions SET category_id = NULL, cat_source = NULL WHERE id IN ({marks})", ids)
     return categorize(conn, f"id IN ({marks})", tuple(ids))
+
+
+def migrate_merchant_keys(conn) -> None:
+    """Rewrite merchant keys saved before spaces stopped counting ("AQUA NETWORKS" -> "AQUANETWORKS").
+
+    Learned categories, subscription answers, savings destinations, refund choices, closed hints and
+    payday choices all keep working. When two spellings were saved, the newest answer wins.
+    """
+
+    def fold(key: str) -> str:
+        return key.replace(" ", "")
+
+    def merge(table: str, cols: list[str], stamp: str, prefix: str = "") -> None:
+        groups: dict[str, list[dict]] = {}
+        for r in db.rows(conn.execute(f"SELECT key, {', '.join(cols)} FROM {table}")):
+            if r["key"].startswith(prefix):
+                groups.setdefault(fold(r["key"]), []).append(r)
+        for new, rows in groups.items():
+            if all(r["key"] == new for r in rows):
+                continue
+            keep = max(rows, key=lambda r: r[stamp] or "")  # the newest answer wins
+            if "hits" in cols:
+                keep = {**keep, "hits": sum(r["hits"] for r in rows)}
+            conn.executemany(f"DELETE FROM {table} WHERE key = ?", [(r["key"],) for r in rows])
+            conn.execute(
+                f"INSERT INTO {table} (key, {', '.join(cols)}) VALUES ({', '.join('?' * (len(cols) + 1))})",
+                (new, *(keep[c] for c in cols)),
+            )
+
+    merge("merchant_memory", ["category_id", "hits", "updated_at"], "updated_at")
+    merge("subscription_marks", ["state", "updated_at"], "updated_at")
+    merge("saving_dest_cp", ["dest", "created_at"], "created_at", prefix="name:")
+    conn.execute("UPDATE refund_rejects SET key = REPLACE(key, ' ', '') WHERE key LIKE '% %'")
+    for r in db.rows(conn.execute("SELECT key, dismissed_at FROM dismissed_alerts WHERE key LIKE '% %'")):
+        if r["key"].startswith(("sub:", "price:")):
+            conn.execute("DELETE FROM dismissed_alerts WHERE key = ?", (r["key"],))
+            conn.execute(
+                "INSERT OR IGNORE INTO dismissed_alerts (key, dismissed_at) VALUES (?, ?)",
+                (fold(r["key"]), r["dismissed_at"]),
+            )
+    chosen = settings.get(conn, "payday_overrides")
+    if isinstance(chosen, dict) and any(" " in k for k in chosen):
+        settings.put(conn, "payday_overrides", {fold(k): v for k, v in chosen.items()})

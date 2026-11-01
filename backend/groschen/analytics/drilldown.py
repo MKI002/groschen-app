@@ -94,7 +94,7 @@ def merchant_scope(history: list[dict], flow: str | None) -> dict:
         "name": history[0]["merchant"],
         "group": grp or common.UNCATEGORIZED["grp"],
         "color": color or "muted",
-        "key": history[0]["merchant"].lower(),
+        "key": names.name_key(history[0]["merchant"]),
         "direction": flow if flow in ("income", "spending") else "income" if net > 0 else "spending",
     }
 
@@ -102,7 +102,7 @@ def merchant_scope(history: list[dict], flow: str | None) -> dict:
 def _in_scope(tx: dict, scope: dict, cats: dict) -> bool:
     if scope["kind"] == "merchant":
         # Refunds and payments alike, so the total is what really went to (or came from) them.
-        return tx["merchant"].lower() == scope["key"]
+        return names.name_key(tx["merchant"]) == scope["key"]
     if tx["category_id"] not in scope["ids"]:
         return False
     # The same rule the charts use, so the list adds up to the slice that was clicked.
@@ -161,11 +161,11 @@ def build(
     moved = paydays.shifted(conn)
     history: list[dict] = []
     if merchant is not None:
-        wanted = merchant.strip().lower()
+        wanted = names.name_key(merchant)
         for t in _load(conn, "0001-01-01", "9999-12-31"):
             t["merchant"] = display_name(t)
             t["counts_for"] = moved.get(t["id"], t["date"])
-            if t["merchant"].lower() == wanted:
+            if wanted and names.name_key(t["merchant"]) == wanted:
                 history.append(t)
         scope = merchant_scope(history, flow) if history else None
     elif custom is not None:
@@ -243,6 +243,7 @@ def build(
     monthly = {m: {"month": m, "amount": 0.0, "count": 0} for m in months}
     weekday = [{"day": d, "amount": 0.0, "count": 0} for d in range(WEEKDAYS)]
     merchants: dict[str, dict] = {}
+    newest: dict[int, str] = {}
     for t in items:
         key = common.month_key(t["counts_for"])
         m = monthly.setdefault(key, {"month": key, "amount": 0.0, "count": 0})
@@ -251,7 +252,10 @@ def build(
         w = weekday[dt.date.fromisoformat(t["date"]).weekday()]
         w["amount"] += t["value"]
         w["count"] += 1
-        me = merchants.setdefault(t["merchant"].lower(), {"name": t["merchant"], "amount": 0.0, "count": 0})
+        me = merchants.setdefault(names.name_key(t["merchant"]), {"name": t["merchant"], "amount": 0.0, "count": 0})
+        if t["date"] > newest.get(id(me), ""):
+            newest[id(me)] = t["date"]
+            me["name"] = t["merchant"]  # a merchant spelled two ways shows its latest spelling
         me["amount"] += t["value"]
         me["count"] += 1
 
