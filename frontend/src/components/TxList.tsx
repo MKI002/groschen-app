@@ -1,11 +1,33 @@
 import { Fragment, useMemo, useState } from "react";
 import { catName, locale, t, useT } from "../i18n";
-import { colorVar, dateShort, daysFrom, eur, initial, monthLong, veil } from "../lib/format";
+import { colorVar, dateShort, daysFrom, eur, initial, money, monthLong, veil } from "../lib/format";
 import type { Tx } from "../lib/types";
 import { Icon } from "./Icons";
 import { allBack, BackLine } from "./Refunds";
 
 // "Today", "Yesterday", then weekday and date; the year only when it isn't this one.
+// What a booking adds to a sum in the home currency: nothing while money in another currency has no rate yet.
+export const counted = (tx: Pick<Tx, "amount" | "orig_amount" | "fx_rate">) => (tx.orig_amount != null && tx.fx_rate == null ? 0 : tx.amount);
+
+// A booking's amount in the home currency; money in another currency shows what the bank booked
+// underneath (50,00 $), or only that, marked, while there's no exchange rate for it.
+export function TxAmount({ tx }: { tx: Pick<Tx, "amount" | "currency" | "orig_amount" | "fx_rate"> }) {
+  if (tx.orig_amount == null || !tx.currency) return <>{eur(tx.amount)}</>;
+  if (tx.fx_rate == null)
+    return (
+      <>
+        {money(tx.orig_amount, tx.currency)}
+        <small className="orig">{t("fx.notCounted")}</small>
+      </>
+    );
+  return (
+    <>
+      {eur(tx.amount)}
+      <small className="orig">{money(tx.orig_amount, tx.currency)}</small>
+    </>
+  );
+}
+
 export function dayHead(iso: string) {
   const n = daysFrom(iso);
   if (n === 0) return t("day.today");
@@ -40,8 +62,8 @@ export function TxList({ items, byDay, onOpen, accepted, onAccept, showAccount =
       const last = out[out.length - 1];
       if (byDay && last && last.day === tx.date) {
         last.items.push(tx);
-        last.sum += tx.amount;
-      } else out.push({ day: tx.date, sum: tx.amount, items: [tx], entries: [] });
+        last.sum += counted(tx);
+      } else out.push({ day: tx.date, sum: counted(tx), items: [tx], entries: [] });
     }
     for (const g of out) {
       const roundups = fold && byDay ? g.items.filter((tx) => tx.roundup && tx.needs_review !== 1) : [];
@@ -110,7 +132,9 @@ export function TxList({ items, byDay, onOpen, accepted, onAccept, showAccount =
           )}
         </span>
         {showAccount && <span className="txl-acct">{tx.account}</span>}
-        <span className={`txl-amt${tx.amount > 0 ? " pos" : ""}${allBack(tx) ? " gone" : ""}`}>{eur(tx.amount)}</span>
+        <span className={`txl-amt${tx.amount > 0 ? " pos" : ""}${allBack(tx) ? " gone" : ""}`}>
+          <TxAmount tx={tx} />
+        </span>
       </div>
     );
   };
@@ -119,7 +143,7 @@ export function TxList({ items, byDay, onOpen, accepted, onAccept, showAccount =
   const roundupRow = (day: string, list: Tx[]) => {
     const isOpen = open.has(day);
     const first = list[0];
-    const sum = list.reduce((s, tx) => s + tx.amount, 0);
+    const sum = list.reduce((s, tx) => s + counted(tx), 0);
     const toggle = () =>
       setOpen((o) => {
         const next = new Set(o);

@@ -9,7 +9,8 @@ import { Icon } from "../components/Icons";
 import { Odometer } from "../components/Motion";
 import { Card, ChangePill, Dropdown, Empty, ErrorNote, Loading, Spinner, Tabs, useApi, useSyncEvents, useToast } from "../components/UI";
 import { useZoom } from "../components/Zoom";
-import { t as tr, useT } from "../i18n";
+import { getRegion, t as tr, useT } from "../i18n";
+import { germanTax } from "../lib/regions";
 import { api } from "../lib/api";
 import { clipMonths, periodBounds, useApp, type Period } from "../lib/app";
 import { gainBetween, monthlyReturns, performance, periodSpan, thin, timeOf, xirrBetween, type DayPoint } from "../lib/depot";
@@ -290,6 +291,7 @@ function DepotOverview({ data }: { data: Inv }) {
         </div>
       )}
       <Holdings holdings={data.holdings} views={windowed ? views : null} when={windowed && views ? when : null} />
+      {germanTax(getRegion().country) && (
       <div className="allowance">
         <span className="al-txt">
           <b>{t("inv.allowance", { year: data.allowance.year })}</b>
@@ -302,6 +304,7 @@ function DepotOverview({ data }: { data: Inv }) {
           {t("inv.allowance.adjust")}
         </button>
       </div>
+      )}
       {!data.online_prices && <OnlinePricesOffer compact />}
     </>
   );

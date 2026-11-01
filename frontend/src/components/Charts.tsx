@@ -3,7 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { locale, t as tr } from "../i18n";
 import { mondayOf, timeOf } from "../lib/depot";
-import { dateShort, dayMonth, eur, eur0, figure, monthLabel, monthShort, num, pct, nines, pctS } from "../lib/format";
+import { dateShort, dayMonth, eur, eur0, figure, monthLabel, monthShort, num, pct, nines, pctS, withSign } from "../lib/format";
 import { amountsHidden } from "../lib/privacy";
 import { reducedMotion, useCountUp, useTween } from "./Motion";
 import { FlowParticles, type Band } from "./Showpiece";
@@ -26,12 +26,12 @@ export function niceScale(min: number, max: number, target = 5) {
   return { lo, hi, ticks };
 }
 
-// d: decimals of the thousands, for an axis whose steps are finer than 100 €.
+// d: decimals of the thousands, for an axis whose steps are finer than 100 €. The sign is the home currency's.
 export const kEur = (v: number, d = 1) => {
   if (v === 0) return "0";
   const shown = Math.abs(v) >= 1000 ? `${num(v / 1000, Math.abs(v) % 1000 === 0 ? 0 : Math.abs(v) % 100 === 0 ? 1 : d)}k` : num(v, 0);
   const n = amountsHidden() ? nines(shown) : shown;
-  return `${n} €`;
+  return withSign(n);
 };
 
 export function every(n: number, max = 12) {

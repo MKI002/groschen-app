@@ -4,7 +4,8 @@ import { confirmBankLogin, DialogHost, openDialog } from "../components/Dialogs"
 import { Icon, Logo } from "../components/Icons";
 import { usePointerEffects } from "../components/Motion";
 import { Dropdown, Spinner, useToast } from "../components/UI";
-import { locale, t, useT, type Key } from "../i18n";
+import { getRegion, locale, t, useT, type Key } from "../i18n";
+import { fintsCountry } from "../lib/regions";
 import { useApp, type Period } from "../lib/app";
 import { dateShort, initial, relTime } from "../lib/format";
 import type { Connection } from "../lib/types";
@@ -77,7 +78,8 @@ function SyncBox({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const c = mostUrgent(connections);
   if (!c) {
-    if (compact) return null;
+    // Outside Germany there's no bank to connect (FinTS is German): bank files come in under Settings.
+    if (compact || !fintsCountry(getRegion().country)) return null;
     return (
       <button className="syncbox" onClick={() => openDialog({ kind: "connect" })}>
         <Icon name="bank" size={16} />

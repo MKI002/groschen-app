@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { createPortal } from "react-dom";
 import { api } from "../lib/api";
 import { t, useLang } from "../i18n";
-import { eur, pct } from "../lib/format";
+import { currencySign, eur, pct } from "../lib/format";
 import { Icon } from "./Icons";
 import { reducedMotion } from "./Motion";
 
@@ -489,7 +489,7 @@ export function NumberSetting({ value, onSave, label, unit, step, min, max, widt
   return (
     <span className="hstack numset">
       <input
-        className={unit === "€" ? "input money-in" : "input"}
+        className={unit === currencySign() ? "input money-in" : "input"}
         style={{ width, height: 32 }}
         aria-label={label}
         type="number"
