@@ -3,6 +3,8 @@ export type Range = { start: string; end: string; label: string };
 export type Status = {
   version: string;
   language: string | null;
+  // The home country and currency; only once logged in.
+  region?: { country: string; currency: string } | null;
   has_user: boolean;
   setup_complete: boolean;
   user: { id: number; username: string; name: string } | null;
@@ -50,6 +52,13 @@ export type BankAccount = {
   balance: number | null;
   balance_date?: string | null;
   enabled?: number;
+  manual?: number;
+  // The account's own currency; orig_balance is the balance in it when that isn't the home
+  // currency. counted (fx_ok in /accounts) is 0 while there's no exchange rate for it.
+  currency?: string;
+  orig_balance?: number | null;
+  counted?: number;
+  fx_ok?: number;
 };
 
 export type Connection = {
@@ -167,6 +176,11 @@ export type Tx = {
   detail?: string; // the purpose without bank references, for the second line in lists ("" when it adds nothing)
   refunded?: number | null; // what came back for this payment in all (a refund, someone paying back)
   refund_for?: TxBrief | null; // the payment this money came back for
+  // Money in another currency than the home currency: what the bank booked, and the rate it was
+  // converted at (null while there's none: then it isn't counted anywhere).
+  currency?: string;
+  orig_amount?: number | null;
+  fx_rate?: number | null;
 };
 
 // A booking in a few words, where another one points at it.
@@ -542,6 +556,9 @@ export type SettingsValues = {
   password_login: boolean;
   categorizer: "model" | "rules";
   language: "de" | "en" | null;
+  country: string;
+  currency: string;
+  online_rates: boolean;
   sync_schedule: "daily" | "twice" | "6h";
   reminder_days: number;
   unusual_alerts: boolean;
@@ -601,6 +618,18 @@ export type SettingsInfo = {
   backups: Backup[];
   next_runs: Record<string, string>;
   market: { enabled: boolean; host: string; last: string | null; funds: { isin: string; fetched_at: string | null; first_date: string | null; last_date: string | null; points: number | null; error: string | null }[] };
+  // Exchange rates: which currencies other than the home one are kept here, what one unit is worth,
+  // and the accounts that aren't counted for want of a rate.
+  fx?: {
+    enabled: boolean;
+    host: string;
+    home: string;
+    foreign: string[];
+    rates: { currency: string; rate: number | null; date: string | null }[];
+    uncounted: { id: number; name: string; currency: string }[];
+    last: string | null;
+    error: string | null;
+  };
 };
 
 // name: the merchant as lists show it; key: what Groschen matches bookings by.

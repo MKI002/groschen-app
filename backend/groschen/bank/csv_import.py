@@ -338,6 +338,7 @@ COLUMNS = {
     "own_name": ["bezeichnungauftragskonto", "accountname"],
     "status": ["status", "state"],
 }
+GERMAN_DATES = {"buchung", "buchungstag", "buchungsdatum", "datum"}
 # Columns the web page lets the user pick when a file can't be read alone.
 MAPPABLE = ("date", "amount", "debit", "credit", "counterparty", "purpose", "currency", "balance")
 
@@ -483,6 +484,7 @@ def parse(
     text = _decode(raw)
     lines = text.splitlines()
     header_currency = None
+    german = False
     if mapping:
         delim = mapping.get("delimiter") or ","
         header_index = int(mapping.get("header_row", -1))
@@ -516,6 +518,7 @@ def parse(
             return hit[0] if hit else None
 
         i = {key: col(key) for key in COLUMNS}
+        german = names[i["date"]] in GERMAN_DATES if i["date"] is not None else False
         for key in ("amount", "debit", "credit", "balance"):
             hit = _match(names, key)
             if hit and hit[1] and key in ("amount", "debit", "credit"):
@@ -543,7 +546,12 @@ def parse(
         k = i[key]
         return cells[k].strip() if k is not None and k < len(cells) and cells[k].strip() else None
 
-    month_first = month_first_in([cell(c, "date") or "" for c in all_rows], month_first)
+    # Dollars from a US bank write the month first, wherever the user lives; the dates themselves decide when they can.
+    named = Counter(_currency_of(cell(c, "currency"), default_currency) for c in all_rows if cell(c, "currency"))
+    file_currency = (
+        header_currency or (named.most_common(1)[0][0] if named else None) or (mapping or {}).get("currency_code")
+    )
+    month_first = month_first_in([cell(c, "date") or "" for c in all_rows], month_first or file_currency == "USD")
     decimal = _decimal_mark([cell(c, k) or "" for c in all_rows for k in ("amount", "debit", "credit", "balance")])
 
     rows = []
@@ -662,6 +670,8 @@ def parse(
         "holder": (holder or "").strip() or None,
         "balance": balance,
         "currency": currencies.most_common(1)[0][0] if currencies else default_currency,
+        # A German bank's export: one without an IBAN still belongs to the user's only account of its kind.
+        "german": german,
         "rows": rows,
     }
 

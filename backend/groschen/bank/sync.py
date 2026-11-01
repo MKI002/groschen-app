@@ -238,22 +238,39 @@ def _csv_kind(parsed: dict) -> str:
 
 
 def _csv_account(conn, parsed: dict) -> int | None:
-    """The account a CSV file belongs to: by IBAN, else the only account of its kind and currency."""
+    """The account a CSV file belongs to: by IBAN, else the account of its kind and currency that it shares
+    bookings with, else for a German bank's export the only account of its kind."""
     if parsed["iban"]:
         row = db.one(conn.execute("SELECT id FROM accounts WHERE REPLACE(iban, ' ', '') = ?", (parsed["iban"],)))
         if row:
             return row["id"]
         # An account the bank sync knows under this IBAN is found above; one imported from a file
         # without IBAN before is the same account when it is the only one of its kind.
-        rows = conn.execute(
+        candidates = conn.execute(
             "SELECT id FROM accounts WHERE kind = ? AND currency = ? AND manual = 0 AND (iban IS NULL OR iban = '')",
             (_csv_kind(parsed), parsed["currency"]),
         ).fetchall()
-        return rows[0]["id"] if len(rows) == 1 else None
-    rows = conn.execute(
-        "SELECT id FROM accounts WHERE kind = ? AND currency = ? AND manual = 0", (_csv_kind(parsed), parsed["currency"])
-    ).fetchall()
-    return rows[0]["id"] if len(rows) == 1 else None
+    else:
+        candidates = conn.execute(
+            "SELECT id FROM accounts WHERE kind = ? AND currency = ? AND manual = 0", (_csv_kind(parsed), parsed["currency"])
+        ).fetchall()
+    ids = [r["id"] for r in candidates]
+    shared = [i for i in ids if _shares_bookings(conn, i, parsed)]
+    if len(shared) == 1:
+        return shared[0]
+    # A Chase or Revolut file next to a Girokonto is another account; a German bank's export without
+    # IBAN belongs to the only account of its kind, the way Groschen has always read them.
+    return ids[0] if len(ids) == 1 and parsed.get("german") else None
+
+
+def _shares_bookings(conn, account_id: int, parsed: dict) -> bool:
+    have = {
+        (r[0], round(r[1], 2))
+        for r in conn.execute(
+            "SELECT date, COALESCE(orig_amount, amount) FROM transactions WHERE account_id = ?", (account_id,)
+        )
+    }
+    return any((r["date"], round(r["amount"], 2)) in have for r in parsed["rows"])
 
 
 def _default_name(kind: str) -> str:

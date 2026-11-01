@@ -292,3 +292,35 @@ def test_export_keeps_the_original_amount_and_adds_the_converted_one(client):
     assert header.endswith("Amount in EUR")
     payroll = next(line for line in lines if "PAYROLL" in line)
     assert ";2000,00;USD;" in payroll and payroll.endswith(f";{2000 / 1.12:.2f}".replace(".", ","))
+
+
+def test_a_foreign_bank_file_next_to_a_girokonto_is_another_account(demo_data, run_job):
+    from groschen import demo
+
+    demo.load(today=dt.date(2026, 10, 30))
+    with db.session() as conn:
+        before = conn.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
+    r = sync.import_csv(Job(id="t", kind="import"), CHASE)
+    with db.session() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == before + 1
+        assert conn.execute("SELECT COUNT(*) FROM transactions WHERE account_id = ?", (r["account_id"],)).fetchone()[0] == 3
+    # The same file again lands in that new account, and nothing twice.
+    again = sync.import_csv(Job(id="t", kind="import"), CHASE)
+    assert again["account_id"] == r["account_id"] and again["imported"] == 0
+
+
+def test_a_subscription_in_another_currency_has_no_price_change_from_the_rate():
+    from groschen.analytics import recurring
+
+    # $59.99 a month while the dollar moves by a few percent: the same price every time.
+    months = ["2026-05-03", "2026-06-03", "2026-07-03", "2026-08-03", "2026-09-03", "2026-10-03"]
+    rows = "".join(f"{m[5:7]}/{m[8:]}/{m[:4]},ADOBE CREATIVE CLOUD,-59.99\n" for m in months)
+    raw = ("Date,Description,Amount (USD)\n" + rows).encode()
+    with db.session() as conn:
+        fx.store(conn, [("USD", m, 1.02 + 0.03 * i) for i, m in enumerate(months)])
+    sync.import_csv(Job(id="t", kind="import"), raw)
+    with db.session() as conn:
+        amounts = [r[0] for r in conn.execute("SELECT amount FROM transactions ORDER BY date")]
+        assert len(set(amounts)) == 6  # in euros it moves every month
+        entry = next(e for e in recurring.detect(conn, dt.date(2026, 10, 20)) if "ADOBE" in e["name"].upper())
+        assert entry["price_change"] == 0 and entry["changes"] == []

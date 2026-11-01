@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { t, useT } from "../i18n";
 import type { BankAccount } from "../lib/types";
+import { currencySign } from "../lib/format";
 import { Icon } from "./Icons";
 import { Dropdown, useApi } from "./UI";
 
@@ -116,7 +117,7 @@ export function FilterBar({ f, placeholder, children }: { f: TxFilters; placehol
             <input className="input money-in" inputMode="decimal" placeholder="0" aria-label={t("dd.min.label")} value={f.minText} onChange={(e) => f.setMinText(e.target.value)} />
             <span className="muted">{t("tx.amountTo")}</span>
             <input className="input money-in" inputMode="decimal" placeholder="∞" aria-label={t("dd.max.label")} value={f.maxText} onChange={(e) => f.setMaxText(e.target.value)} />
-            <span className="muted">€</span>
+            <span className="muted">{currencySign()}</span>
           </div>
           {f.filtered && (
             <button type="button" className="linkbtn" onClick={f.reset}>

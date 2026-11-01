@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BankForm, TanPrompt, type TestResult } from "../components/BankForm";
+import { useCsvImport, type ImportResult } from "../components/CsvImport";
 import { Icon, Logo } from "../components/Icons";
 import { LangPicker } from "../components/LangPicker";
 import { celebrate } from "../components/Motion";
@@ -8,6 +9,7 @@ import { getLang, useT, type Key } from "../i18n";
 import { api } from "../lib/api";
 import { pollJob } from "../lib/app";
 import { dateShort, int } from "../lib/format";
+import { applyRegion, COUNTRIES, countryList, currencyName, guessCountry } from "../lib/regions";
 import type { Job, SettingsValues, Status } from "../lib/types";
 
 const REMIND = [30, 15, 7];
@@ -19,8 +21,6 @@ const STEPS: [Key, Key][] = [
   ["wz.step4", "wz.step4.sub"],
   ["wz.step5", "wz.step5.sub"],
 ];
-
-type ImportResult = { account_name: string; imported: number; skipped: number; first: string | null; last: string | null; file: string };
 
 export default function Wizard({ status, onFinished }: { status: Status; onFinished: () => void }) {
   const t = useT();
@@ -34,8 +34,11 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
 
-  // step 2
+  // step 2: where the user lives decides the currency, how bank files are read, and whether the
+  // bank can be synced (FinTS is German).
+  const [country, setCountry] = useState(() => status.region?.country || guessCountry());
   const [connected, setConnected] = useState<TestResult | null>(null);
+  const fints = country === "DE";
 
   // step 3
   const [imports, setImports] = useState<ImportResult[]>([]);
@@ -52,6 +55,21 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
 
   useEffect(() => setError(null), [step]);
 
+  async function saveCountry(c: string) {
+    setCountry(c);
+    const currency = COUNTRIES[c]?.currency ?? "EUR";
+    applyRegion({ country: c, currency });
+    try {
+      await api.patch("/settings", { country: c, currency });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  // The guess counts once the user has a login to save it with.
+  useEffect(() => {
+    if (step === 2 && !status.region?.country) void saveCountry(country);
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function createAccount() {
     if (pass !== pass2) return setError(t("wz.passMismatch"));
     if (pass.length < 8) return setError(t("wz.passShort"));
@@ -66,19 +84,14 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
     }
   }
 
+  const csv = useCsvImport(
+    (r) => setImports((x) => [...x, r]),
+    (message) => setImportErrors((x) => [...x, message]),
+  );
   async function importFiles(files: FileList | null) {
     if (!files) return;
     setBusy(true);
-    for (const file of Array.from(files)) {
-      const form = new FormData();
-      form.append("file", file);
-      try {
-        const r = await api.upload<ImportResult>("/import/csv", form);
-        setImports((x) => [...x, r]);
-      } catch (e) {
-        setImportErrors((x) => [...x, `${file.name}: ${(e as Error).message}`]);
-      }
-    }
+    await csv.importFiles(files);
     setBusy(false);
   }
 
@@ -171,11 +184,32 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
     body = (
       <>
         <h2>{t("wz.bank")}</h2>
-        <p className="sub">{t("wz.bank.sub")}</p>
-        <BankForm connected={connected} onConnected={setConnected} onAccountsChange={(accounts) => setConnected((c) => c && { ...c, accounts })} />
+        <div className="field">
+          <label htmlFor="wz-country">{t("wz.country")}</label>
+          <select className="input" id="wz-country" value={country} disabled={!!connected} onChange={(e) => saveCountry(e.target.value)}>
+            {countryList(getLang()).map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <span className="hint">{t("wz.country.hint", { currency: currencyName(COUNTRIES[country]?.currency ?? "EUR", getLang()) })}</span>
+        </div>
+        {fints ? (
+          <>
+            <p className="sub">{t("wz.bank.sub")}</p>
+            <BankForm connected={connected} onConnected={setConnected} onAccountsChange={(accounts) => setConnected((c) => c && { ...c, accounts })} />
+          </>
+        ) : (
+          <div className="callout">
+            <span>
+              <b>{t("wz.noSync")}</b> {t("wz.noSync.text")}
+            </span>
+          </div>
+        )}
       </>
     );
-    next = (
+    next = fints ? (
       <>
         {!connected && (
           <button className="btn ghost" onClick={() => setStep(3)}>
@@ -186,6 +220,10 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
           {t("common.continue")}
         </button>
       </>
+    ) : (
+      <button className="btn primary" onClick={() => setStep(3)}>
+        {t("common.continue")}
+      </button>
     );
   }
 
@@ -193,7 +231,7 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
     body = (
       <>
         <h2>{t("wz.history")}</h2>
-        <p className="sub">{t("wz.history.sub")}</p>
+        <p className="sub">{connected ? t("wz.history.sub") : t("wz.history.subCsv")}</p>
         <label
           className="drop"
           htmlFor="wz-file"
@@ -232,6 +270,7 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
             {e}
           </p>
         ))}
+        {csv.dialog}
         <div className="callout">
           <span>
             <b>{t("wz.prices.title")}</b> {t("wz.prices.text")}{" "}
@@ -246,7 +285,7 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
     );
     next = (
       <button className="btn primary" disabled={busy} onClick={() => setStep(4)}>
-        {imports.length ? t("common.continue") : t("wz.skip90")}
+        {imports.length ? t("common.continue") : connected ? t("wz.skip90") : t("wz.skipLater")}
       </button>
     );
   }
@@ -278,6 +317,7 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
             <b>{t("wz.light")}</b> {t("wz.light.text")}
           </span>
         </div>
+        {connected && (
         <div className="row2">
           <div className="field">
             <label htmlFor="wz-sync">{t("sched.label")}</label>
@@ -297,6 +337,7 @@ export default function Wizard({ status, onFinished }: { status: Status; onFinis
             />
           </div>
         </div>
+        )}
         <div className="checks">
           <label className="check">
             <input type="checkbox" checked={!!prefs.alert_price_up} onChange={(e) => set("alert_price_up", e.target.checked)} />

@@ -122,7 +122,7 @@ def _charges(conn, today: dt.date) -> dict[str, list[dict]]:
     since = (today - dt.timedelta(days=LOOKBACK_DAYS)).isoformat()
     txs = db.rows(
         conn.execute(
-            "SELECT t.id, t.date, t.amount, t.counterparty, t.purpose, t.category_id, t.cat_source, "
+            "SELECT t.id, t.date, t.amount, t.orig_amount, t.counterparty, t.purpose, t.category_id, t.cat_source, "
             "c.name AS category, c.kind, c.grp "
             "FROM transactions t LEFT JOIN categories c ON c.id = t.category_id "
             "WHERE t.amount < 0 AND t.date >= ? AND t.date <= ? ORDER BY t.date, t.id",
@@ -210,17 +210,20 @@ def _changes(items: list[dict], amounts: list[float]) -> list[dict]:
     """
     levels: list[dict] = []
     for item, a in zip(items, amounts):
-        if levels and abs(a - levels[-1]["amount"]) < max(0.5, levels[-1]["amount"] * 0.01):
+        # A charge in another currency is judged by what the merchant asked, not by the exchange rate of the day.
+        native = -item["orig_amount"] if item.get("orig_amount") is not None else a
+        if levels and abs(native - levels[-1]["native"]) < max(0.5, levels[-1]["native"] * 0.01):
             levels[-1]["count"] += 1
             levels[-1]["amount"] = a
+            levels[-1]["native"] = native
             continue
-        levels.append({"amount": a, "date": item["date"], "count": 1})
+        levels.append({"amount": a, "native": native, "date": item["date"], "count": 1})
     out, prev = [], None
     for i, lv in enumerate(levels):
         settled = lv["count"] >= 2 or i == len(levels) - 1
         if not settled:
             continue
-        if prev is not None and abs(lv["amount"] - prev["amount"]) >= 0.5:
+        if prev is not None and abs(lv["native"] - prev["native"]) >= 0.5:
             out.append({"date": lv["date"], "from": round(prev["amount"], 2), "to": round(lv["amount"], 2)})
         prev = lv
     return out

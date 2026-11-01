@@ -10,7 +10,7 @@ import { Card, Empty, ErrorNote, IconBadge, Loading, Modal, Seg, Spinner, Switch
 import { api, qs } from "../lib/api";
 import { t, useT, type Key } from "../i18n";
 import { periodQuery, useApp } from "../lib/app";
-import { dateShort, dayLabel, eur, int, monthLong, veil } from "../lib/format";
+import { dateShort, dayLabel, eur, int, money, monthLong, num, veil, withSign } from "../lib/format";
 import { drillPath, navigate, useSearch } from "../lib/router";
 import type { RefundCandidate, RefundInfo, Tx, TxBrief, TxPage } from "../lib/types";
 import { PageHeader, periodLabel } from "./Shell";
@@ -144,7 +144,14 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
       }
     >
       <div className="txhead">
-        <span className={`txhead-amt${tx.amount > 0 ? " pos" : ""}`}>{eur(tx.amount)}</span>
+        <span className={`txhead-amt${tx.amount > 0 ? " pos" : ""}`}>{tx.orig_amount != null && tx.fx_rate == null && tx.currency ? money(tx.orig_amount, tx.currency) : eur(tx.amount)}</span>
+        {tx.orig_amount != null && tx.currency && (
+          <span className="txhead-orig">
+            {tx.fx_rate != null
+              ? t("fx.booked", { amount: money(tx.orig_amount, tx.currency), rate: `${withSign("1", tx.currency)} = ${withSign(num(tx.fx_rate, tx.fx_rate < 0.1 ? 4 : 3))}` })
+              : t("fx.noRate", { code: tx.currency })}
+          </span>
+        )}
         <span className="muted">
           {dayLabel(tx.date)} · {tx.account}
         </span>
