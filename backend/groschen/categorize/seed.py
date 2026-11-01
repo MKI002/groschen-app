@@ -51,9 +51,9 @@ SAVE_WORDS = (
 
 # Regular expressions matched against the upper-cased text of a transaction
 # (counterparty, purpose and booking text). Sign: "+" income only, "-" spending only, None both.
-# Bump KNOWLEDGE when this list changes: existing installs then sort their bookings again on the next
+# Bump KNOWLEDGE when this list or vendor_list.py changes: existing installs then sort their bookings again on the next
 # start (never the ones the user sorted).
-KNOWLEDGE = 2
+KNOWLEDGE = 3
 MERCHANTS: list[tuple[str, str, str | None]] = [
     # Groceries
     (r"\bREWE\b", "Groceries", "-"),
