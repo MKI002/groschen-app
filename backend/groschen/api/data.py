@@ -111,9 +111,10 @@ def get_transactions(
         where.append(
             "(LOWER(COALESCE(t.counterparty,'')) LIKE ? OR LOWER(COALESCE(t.purpose,'')) LIKE ? "
             "OR LOWER(COALESCE(c.name,'')) LIKE ? OR REPLACE(printf('%.2f', ABS(t.amount)), '.', ',') LIKE ? "
-            "OR printf('%.2f', ABS(t.amount)) LIKE ?)"
+            "OR printf('%.2f', ABS(t.amount)) LIKE ? OR REPLACE(printf('%.2f', ABS(t.orig_amount)), '.', ',') LIKE ? "
+            "OR printf('%.2f', ABS(t.orig_amount)) LIKE ?)"
         )
-        params += [like, like, like, like, like]
+        params += [like, like, like, like, like, like, like]
     if filter == "review":
         where.append("t.needs_review = 1")
     elif filter == "unc":
@@ -140,15 +141,18 @@ def get_transactions(
     with db.session() as conn:
         items = db.rows(
             conn.execute(
-                f"SELECT t.id, t.date, t.amount, t.counterparty, t.purpose, t.booking_text, t.category_id, t.cat_source, "
+                f"SELECT t.id, t.date, t.amount, t.currency, t.orig_amount, t.fx_rate, a.fx_ok AS counted, "
+                f"t.counterparty, t.purpose, t.booking_text, t.category_id, t.cat_source, "
                 f"t.confidence, t.needs_review, t.note, a.name AS account, c.name AS category, c.grp AS category_group, "
                 f"c.color AS category_color {base} ORDER BY {order} LIMIT ? OFFSET ?",
                 (*params, min(limit, 1000), offset),
             )
         )
         total, inflow, outflow, review = conn.execute(
-            f"SELECT COUNT(*), COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount END), 0), "
-            f"COALESCE(SUM(CASE WHEN t.amount < 0 THEN -t.amount END), 0), COALESCE(SUM(t.needs_review), 0) {base}",
+            # Money without an exchange rate is listed but not added up.
+            f"SELECT COUNT(*), COALESCE(SUM(CASE WHEN t.amount > 0 AND a.fx_ok = 1 THEN t.amount END), 0), "
+            f"COALESCE(SUM(CASE WHEN t.amount < 0 AND a.fx_ok = 1 THEN -t.amount END), 0), "
+            f"COALESCE(SUM(t.needs_review), 0) {base}",
             params,
         ).fetchone()
         moved = paydays.shifted(conn)

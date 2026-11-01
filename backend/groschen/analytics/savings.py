@@ -112,7 +112,10 @@ def destinations(conn, start: str, end: str, saved: float, txs: list[dict], paym
 
     ``payments`` (portfolio.payments) can be passed in when splitting many months in a row.
     """
-    accounts = {a["id"]: a for a in db.rows(conn.execute("SELECT id, kind, name, iban FROM accounts WHERE enabled = 1"))}
+    accounts = {
+        a["id"]: a
+        for a in db.rows(conn.execute("SELECT id, kind, name, iban FROM accounts WHERE enabled = 1 AND fx_ok = 1"))
+    }
     own_ibans = {_norm_iban(a["iban"]): a for a in accounts.values() if a["iban"]}
     cats = common.categories(conn)
     payments = portfolio.payments(conn) if payments is None else payments
@@ -128,7 +131,7 @@ def destinations(conn, start: str, end: str, saved: float, txs: list[dict], paym
         conn.execute(
             "SELECT t.id, t.date, t.amount, t.account_id, t.counterparty, t.counterparty_iban, t.purpose, t.booking_text, "
             "t.category_id FROM transactions t JOIN accounts a ON a.id = t.account_id "
-            "WHERE a.enabled = 1 AND t.amount != 0 AND t.date >= ? AND t.date <= ?",
+            "WHERE a.enabled = 1 AND a.fx_ok = 1 AND t.amount != 0 AND t.date >= ? AND t.date <= ?",
             (lo, hi),
         )
     )

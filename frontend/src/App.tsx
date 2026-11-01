@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, setUnauthorizedHandler } from "./lib/api";
 import { AppProvider } from "./lib/app";
+import { applyRegion } from "./lib/regions";
 import type { Status } from "./lib/types";
 import Login from "./pages/Login";
 import Shell from "./pages/Shell";
@@ -16,6 +17,7 @@ export default function App() {
 
   const route = useCallback((s: Status) => {
     setStatus(s);
+    applyRegion(s.region);
     if (!s.has_user) setPhase("wizard");
     else if (!s.user) setPhase("login");
     else if (!s.setup_complete) setPhase("wizard");

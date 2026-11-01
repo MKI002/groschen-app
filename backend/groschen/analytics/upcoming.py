@@ -60,7 +60,7 @@ def standing_transfers(conn, today: dt.date) -> list[dict]:
         conn.execute(
             "SELECT t.id, t.date, t.amount, t.counterparty, t.purpose, c.name AS category FROM transactions t "
             "JOIN accounts a ON a.id = t.account_id JOIN categories c ON c.id = t.category_id "
-            "WHERE a.kind = 'checking' AND a.enabled = 1 AND t.amount < 0 AND c.kind = 'transfer' "
+            "WHERE a.kind = 'checking' AND a.enabled = 1 AND a.fx_ok = 1 AND t.amount < 0 AND c.kind = 'transfer' "
             "AND t.date >= ? AND t.date <= ? ORDER BY t.date, t.id",
             (since, today.isoformat()),
         )
@@ -155,7 +155,8 @@ def expected(items: list[dict], start: dt.date, end: dt.date) -> list[dict]:
 def _checking(conn) -> list[dict]:
     return db.rows(
         conn.execute(
-            "SELECT id, name, balance, balance_date FROM accounts WHERE kind = 'checking' AND enabled = 1 ORDER BY id"
+            "SELECT id, name, balance, balance_date FROM accounts WHERE kind = 'checking' AND enabled = 1 AND "
+            "fx_ok = 1 ORDER BY id"
         )
     )
 
@@ -222,7 +223,7 @@ def month_calendar(conn, month: str, today: dt.date | None = None) -> dict:
         conn.execute(
             "SELECT t.id, t.date, t.amount, t.counterparty, t.purpose, c.kind AS cat_kind FROM transactions t "
             "JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = t.category_id "
-            "WHERE a.enabled = 1 AND t.date >= ? AND t.date <= ? ORDER BY t.date, t.id",
+            "WHERE a.enabled = 1 AND a.fx_ok = 1 AND t.date >= ? AND t.date <= ? ORDER BY t.date, t.id",
             (first.isoformat(), last.isoformat()),
         )
     )

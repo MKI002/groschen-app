@@ -5,7 +5,7 @@ import os
 
 import uvicorn
 
-from . import config, db, market, netguard, scheduler
+from . import config, db, fx, market, netguard, scheduler
 from .bank import sync
 
 
@@ -46,6 +46,7 @@ def main() -> None:
     sync.allow_bank_hosts()
     with db.session() as conn:
         market.apply_setting(conn)
+        fx.apply_setting(conn)
     scheduler.start()
     from .main import app
 

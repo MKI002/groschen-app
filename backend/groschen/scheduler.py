@@ -8,7 +8,7 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from . import backup, config, db, jobs, market, settings
+from . import backup, config, db, fx, jobs, market, settings
 
 log = logging.getLogger("groschen.scheduler")
 
@@ -39,6 +39,13 @@ def _prices() -> None:
         jobs.start("prices", market.refresh)
 
 
+def _rates() -> None:
+    try:
+        fx.after_change()
+    except Exception:  # pragma: no cover - rates must not stop the scheduler
+        log.exception("Exchange rates failed")
+
+
 def _backup() -> None:
     try:
         backup.scheduled()
@@ -60,6 +67,8 @@ def start() -> None:
     _scheduler.add_job(_housekeeping, CronTrigger(hour="4", minute="30", timezone=config.TZ), id="housekeeping")
     # Online ETF prices (only when turned on): after the morning sync, once European markets have closed the day before.
     _scheduler.add_job(_prices, CronTrigger(hour="6", minute="40", timezone=config.TZ), id="prices")
+    # Exchange rates (only when turned on and needed): the ECB publishes them around 16:00 CET.
+    _scheduler.add_job(_rates, CronTrigger(hour="6,17", minute="50", timezone=config.TZ), id="rates")
     _scheduler.start()
     reschedule()
 

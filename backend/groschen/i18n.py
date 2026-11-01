@@ -40,6 +40,20 @@ def pick(header: str | None) -> str | None:
 
 # English template -> German template. Placeholders in braces must match.
 DE = {
+    # currencies and bank files from anywhere
+    "Exchange rates are turned off in Settings.": "Wechselkurse sind in den Einstellungen ausgeschaltet.",
+    "Couldn't load the exchange rates. Groschen tries again tomorrow.": (
+        "Die Wechselkurse konnten nicht geladen werden. Groschen versucht es morgen wieder."
+    ),
+    "Loading exchange rates": "Wechselkurse laden",
+    "Converting": "Umrechnen",
+    "Exchange rates": "Wechselkurse",
+    "Pick the column with the date and the one with the amount.": "Wähle die Spalte mit dem Datum und die mit dem Betrag.",
+    "Checking account": "Girokonto",
+    "Groschen doesn't know that currency.": "Diese Währung kennt Groschen nicht.",
+    "Amount in {currency}": "Betrag in {currency}",
+    "Savings account": "Sparkonto",
+    "Credit card": "Kreditkarte",
     # login and account
     "Please log in.": "Bitte melde dich an.",
     "An account already exists. Please log in.": "Es gibt schon ein Konto. Bitte melde dich an.",

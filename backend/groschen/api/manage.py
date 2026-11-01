@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from .. import backup, config, db, i18n, jobs, market, netguard, scheduler, settings
+from .. import backup, config, db, fx, i18n, jobs, market, netguard, regions, scheduler, settings
 from ..analytics import cashflow, common, paydays
 from ..categorize import embedder, engine, names
 from ..categorize.seed import group_color
@@ -26,6 +26,7 @@ def get_settings():
         values = settings.get_all(conn)
         net = netguard.recent(conn)
         market_status = market.status(conn)
+        fx_status = fx.status(conn)
         counts = {
             "corrections": conn.execute("SELECT COUNT(*) FROM examples").fetchone()[0],
             "memory": conn.execute("SELECT COUNT(*) FROM merchant_memory").fetchone()[0],
@@ -46,6 +47,7 @@ def get_settings():
         "backups": backup.list_backups(),
         "next_runs": scheduler.next_runs(),
         "market": market_status,
+        "fx": fx_status,
     }
 
 
@@ -60,6 +62,10 @@ def patch_settings(values: dict):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if any(k in values for k in ("sync_schedule", "backup_plan", "backup_nightly", "backup_schedule", "backup_hour")):
         scheduler.reschedule()
+    if any(k in values for k in ("currency", "online_rates")):
+        with db.session() as conn:
+            fx.apply_setting(conn)
+        fx.after_change()
     if "online_prices" in values:
         with db.session() as conn:
             market.apply_setting(conn)
@@ -75,6 +81,15 @@ def refresh_prices():
             raise HTTPException(status_code=400, detail="Online ETF prices are turned off in Settings.")
     running = jobs.running("prices")
     return (running or jobs.start("prices", market.refresh)).as_dict()
+
+
+@router.post("/rates/refresh")
+def refresh_rates():
+    with db.session() as conn:
+        if not fx.enabled(conn):
+            raise HTTPException(status_code=400, detail="Exchange rates are turned off in Settings.")
+    running = jobs.running("rates")
+    return (running or jobs.start("rates", fx.refresh)).as_dict()
 
 
 # --- salary month ---------------------------------------------------------------
@@ -349,10 +364,11 @@ def add_manual_account(body: ManualAccount):
     kind = "manual_liability" if body.kind == "manual_liability" else "manual_asset"
     balance = -abs(body.balance) if kind == "manual_liability" else body.balance
     with db.session() as conn:
+        # A value typed in by hand is in the home currency.
         cur = conn.execute(
-            "INSERT INTO accounts (kind, name, balance, balance_date, manual, created_at) "
-            "VALUES (?, ?, ?, date('now'), 1, ?)",
-            (kind, body.name.strip(), balance, db.now_iso()),
+            "INSERT INTO accounts (kind, name, balance, balance_date, manual, currency, created_at) "
+            "VALUES (?, ?, ?, date('now'), 1, ?, ?)",
+            (kind, body.name.strip(), balance, fx.home(conn), db.now_iso()),
         )
     return {"id": cur.lastrowid}
 
@@ -368,12 +384,17 @@ def set_manual_balance(account_id: int, body: BalanceIn):
         if not a or not a["manual"]:
             raise HTTPException(status_code=400, detail="Only accounts entered by hand can be changed here.")
         balance = -abs(body.balance) if a["kind"] == "manual_liability" else body.balance
-        conn.execute("UPDATE accounts SET balance = ?, balance_date = date('now') WHERE id = ?", (balance, account_id))
+        # Typed in the home currency, whatever it was in before.
+        conn.execute(
+            "UPDATE accounts SET balance = ?, orig_balance = NULL, currency = ?, balance_date = date('now') WHERE id = ?",
+            (balance, fx.home(conn), account_id),
+        )
         conn.execute(
             "INSERT INTO balance_history (account_id, date, balance) VALUES (?, date('now'), ?) "
-            "ON CONFLICT(account_id, date) DO UPDATE SET balance = excluded.balance",
+            "ON CONFLICT(account_id, date) DO UPDATE SET balance = excluded.balance, orig_balance = NULL",
             (account_id, balance),
         )
+        fx.apply(conn)
     return {"ok": True}
 
 
@@ -392,8 +413,8 @@ def list_accounts():
     with db.session() as conn:
         return db.rows(
             conn.execute(
-                "SELECT id, name, kind, iban, balance, balance_date, manual, enabled, connection_id "
-                "FROM accounts ORDER BY manual, id"
+                "SELECT id, name, kind, iban, balance, balance_date, manual, enabled, connection_id, "
+                "currency, orig_balance, fx_ok FROM accounts ORDER BY manual, id"
             )
         )
 
@@ -471,14 +492,25 @@ def export_transactions():
     with db.session() as conn:
         rows = db.rows(
             conn.execute(
-                "SELECT t.date, a.name AS account, t.amount, t.currency, t.counterparty, t.purpose, t.booking_text, "
+                "SELECT t.date, a.name AS account, COALESCE(t.orig_amount, t.amount) AS amount, t.currency, "
+                "t.orig_amount, t.amount AS home_amount, t.fx_rate, t.counterparty, t.purpose, t.booking_text, "
                 'c.grp AS "group", c.name AS category, t.note FROM transactions t JOIN accounts a ON a.id = t.account_id '
                 "LEFT JOIN categories c ON c.id = t.category_id ORDER BY t.date"
             )
         )
+        home = fx.home(conn)
+        # Excel opens a file the way the country writes numbers: 1.234,56 with ";" or 1,234.56 with ",".
+        dot = regions.decimal_dot(settings.get(conn, "country"))
+    foreign = any(r["orig_amount"] is not None for r in rows)
     buf = io.StringIO()
-    writer = csv.writer(buf, delimiter=";")
-    header = (
+    writer = csv.writer(buf, delimiter="," if dot else ";")
+
+    def number(v: float | None) -> str:
+        if v is None:
+            return ""
+        return f"{v:.2f}" if dot else f"{v:.2f}".replace(".", ",")
+
+    header = [
         "Date",
         "Account",
         "Amount",
@@ -489,14 +521,14 @@ def export_transactions():
         "Group",
         "Category",
         "Note",
-    )
-    writer.writerow([i18n.t(h) for h in header])
+    ]
+    writer.writerow([i18n.t(h) for h in header] + ([i18n.t("Amount in {currency}", currency=home)] if foreign else []))
     for r in rows:
         writer.writerow(
             [
                 r["date"],
                 _cell(r["account"]),
-                f"{r['amount']:.2f}".replace(".", ","),
+                number(r["amount"]),
                 _cell(r["currency"]),
                 _cell(r["counterparty"]),
                 _cell(r["purpose"]),
@@ -505,6 +537,7 @@ def export_transactions():
                 _cell(i18n.cat_name(r["category"])),
                 _cell(r["note"]),
             ]
+            + ([number(r["home_amount"] if r["orig_amount"] is None or r["fx_rate"] else None)] if foreign else [])
         )
     data = buf.getvalue().encode("utf-8-sig")
     return StreamingResponse(

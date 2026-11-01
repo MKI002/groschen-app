@@ -6,7 +6,7 @@ import { PlansCard } from "../components/Plans";
 import { ChangePill, Empty, ErrorNote, Loading, Modal, Seg, Spinner, useApi, useConfirm, useSyncEvents, useToast } from "../components/UI";
 import { getLang, t, useT } from "../i18n";
 import { api } from "../lib/api";
-import { dateShort, eur, monthLong, pct } from "../lib/format";
+import { dateShort, eur, money, monthLong, pct } from "../lib/format";
 import { clipMonths, useApp } from "../lib/app";
 import { navigate } from "../lib/router";
 import type { NetWorth as NW } from "../lib/types";
@@ -108,7 +108,7 @@ const KIND_ICON: Record<string, string> = { checking: "bank", savings: "vault", 
 function AccountTile({ a, total, i, onEdit }: { a: Account; total: number; i: number; onEdit: () => void }) {
   useT();
   const depot = a.kind === "depot";
-  const share = a.side === "asset" && total > 0 ? Math.max(0, (a.balance ?? 0) / total) : null;
+  const share = a.side === "asset" && total > 0 && a.counted !== 0 ? Math.max(0, (a.balance ?? 0) / total) : null;
   const open = depot ? () => navigate("/investments") : a.manual === 1 ? onEdit : undefined;
   const body = (
     <>
@@ -125,7 +125,10 @@ function AccountTile({ a, total, i, onEdit }: { a: Account; total: number; i: nu
         </span>
         {open && <Icon name={depot ? "chevRight" : "pencil"} size={15} className="nwacct-go" />}
       </span>
-      <span className={`nwacct-v${a.side === "liability" ? " neg" : ""}`}>{eur(a.side === "liability" ? -Math.abs(a.balance ?? 0) : a.balance)}</span>
+      <span className={`nwacct-v${a.side === "liability" ? " neg" : ""}`}>
+        {a.counted === 0 && a.currency ? money(a.orig_balance ?? a.balance, a.currency) : eur(a.side === "liability" ? -Math.abs(a.balance ?? 0) : a.balance)}
+        {a.orig_balance != null && a.currency && <small className="orig">{a.counted === 0 ? t("fx.notCounted") : money(a.orig_balance, a.currency)}</small>}
+      </span>
       {share !== null && (
         <span className="nwacct-share">
           <span className="meter" aria-hidden="true">

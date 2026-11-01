@@ -2,10 +2,15 @@
 
 import json
 
+from . import regions
+
 DEFAULTS = {
     "setup_complete": False,
     "categorizer": "model",  # "model" or "rules"
     "language": None,  # "de" or "en"; None follows the browser until chosen
+    "country": "",  # home country (regions.py): number and date format, how bank files' dates are read; "" = not chosen
+    "currency": "EUR",  # home currency: every total is shown in it, other currencies are converted (fx.py)
+    "online_rates": False,  # fetch daily exchange rates from the ECB (fx.py); off until turned on
     "sync_schedule": "daily",  # "daily" (06:00), "twice" (06:00 and 18:00), "6h"
     "reminder_days": 15,  # remind this many days before the 90-day bank login is due
     "unusual_alerts": True,  # point out the costliest month on the Overview page
@@ -68,6 +73,8 @@ def put(conn, key: str, value) -> None:
 CHOICES = {
     "categorizer": ("model", "rules"),
     "language": ("de", "en"),
+    "country": ("", *regions.COUNTRIES),
+    "currency": regions.CURRENCIES,
     "sync_schedule": ("daily", "twice", "6h"),
     "backup_schedule": ("hourly", "6h", "twice", "daily", "weekly", "off"),
     "backup_mode": ("last", "days", "smart"),

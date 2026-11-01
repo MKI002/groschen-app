@@ -1,9 +1,10 @@
 """Connecting a bank, syncing it, and importing CSV files."""
 
 import datetime as dt
+import json
 import logging
 
-from .. import db, netguard, security, settings
+from .. import db, fx, i18n, netguard, regions, security, settings
 from ..categorize import engine
 from ..jobs import Job, UserFacingError
 from . import banks, csv_import, store
@@ -216,6 +217,7 @@ def sync_all(job: Job, full: bool = False, first_run: bool = False) -> dict:
 
         with db.session() as conn:
             totals["recurring"] = len(recurring.detect(conn))
+    fx.after_change()
     return totals
 
 
@@ -236,19 +238,44 @@ def _csv_kind(parsed: dict) -> str:
 
 
 def _csv_account(conn, parsed: dict) -> int | None:
-    """The account a CSV file belongs to: by IBAN, else the only account of its kind."""
+    """The account a CSV file belongs to: by IBAN, else the account of its kind and currency that it shares
+    bookings with, else for a German bank's export the only account of its kind."""
     if parsed["iban"]:
         row = db.one(conn.execute("SELECT id FROM accounts WHERE REPLACE(iban, ' ', '') = ?", (parsed["iban"],)))
         if row:
             return row["id"]
         # An account the bank sync knows under this IBAN is found above; one imported from a file
         # without IBAN before is the same account when it is the only one of its kind.
-        rows = conn.execute(
-            "SELECT id FROM accounts WHERE kind = ? AND manual = 0 AND (iban IS NULL OR iban = '')", (_csv_kind(parsed),)
+        candidates = conn.execute(
+            "SELECT id FROM accounts WHERE kind = ? AND currency = ? AND manual = 0 AND (iban IS NULL OR iban = '')",
+            (_csv_kind(parsed), parsed["currency"]),
         ).fetchall()
-        return rows[0]["id"] if len(rows) == 1 else None
-    rows = conn.execute("SELECT id FROM accounts WHERE kind = ? AND manual = 0", (_csv_kind(parsed),)).fetchall()
-    return rows[0]["id"] if len(rows) == 1 else None
+    else:
+        candidates = conn.execute(
+            "SELECT id FROM accounts WHERE kind = ? AND currency = ? AND manual = 0", (_csv_kind(parsed), parsed["currency"])
+        ).fetchall()
+    ids = [r["id"] for r in candidates]
+    shared = [i for i in ids if _shares_bookings(conn, i, parsed)]
+    if len(shared) == 1:
+        return shared[0]
+    # A Chase or Revolut file next to a Girokonto is another account; a German bank's export without
+    # IBAN belongs to the only account of its kind, the way Groschen has always read them.
+    return ids[0] if len(ids) == 1 and parsed.get("german") else None
+
+
+def _shares_bookings(conn, account_id: int, parsed: dict) -> bool:
+    have = {
+        (r[0], round(r[1], 2))
+        for r in conn.execute(
+            "SELECT date, COALESCE(orig_amount, amount) FROM transactions WHERE account_id = ?", (account_id,)
+        )
+    }
+    return any((r["date"], round(r["amount"], 2)) in have for r in parsed["rows"])
+
+
+def _default_name(kind: str) -> str:
+    """A name for an account from a file that doesn't name it, in the user's language."""
+    return i18n.t({"savings": "Savings account", "credit_card": "Credit card"}.get(kind, "Checking account"))
 
 
 def remember_holder(conn, *names: str | None) -> None:
@@ -269,9 +296,58 @@ def remember_holder(conn, *names: str | None) -> None:
         engine.reapply_quick(conn)
 
 
-def import_csv(job: Job, raw: bytes, account_id: int | None = None, filename: str | None = None) -> dict:
-    parsed = csv_import.parse(raw, filename)
+def _saved_mapping(conn, raw: bytes) -> dict | None:
+    try:
+        sig = csv_import.preview(raw)["signature"]
+    except UserFacingError:
+        return None
+    row = conn.execute("SELECT mapping FROM csv_mappings WHERE signature = ?", (sig,)).fetchone()
+    return json.loads(row[0]) if row else None
+
+
+def save_mapping(conn, raw: bytes, mapping: dict) -> dict:
+    """Keep the columns the user picked for this kind of file, so the next one imports by itself."""
+    info = csv_import.preview(raw)
+    clean: dict = {"delimiter": info["delimiter"], "header_row": info["header_row"]}
+    for key in csv_import.MAPPABLE:
+        v = mapping.get(key)
+        if isinstance(v, int) and not isinstance(v, bool) and 0 <= v < info["width"]:
+            clean[key] = v
+    code = mapping.get("currency_code")
+    if isinstance(code, str) and code.upper() in regions.CURRENCIES:
+        clean["currency_code"] = code.upper()
+    conn.execute(
+        "INSERT INTO csv_mappings (signature, mapping, created_at) VALUES (?, ?, ?) "
+        "ON CONFLICT(signature) DO UPDATE SET mapping = excluded.mapping, created_at = excluded.created_at",
+        (info["signature"], json.dumps(clean), db.now_iso()),
+    )
+    return clean
+
+
+def _parse_csv(conn, raw: bytes, filename: str | None, account_id: int | None, mapping: dict | None) -> dict:
+    """Read a bank file: by itself, else with the columns the user picked for this kind of file before."""
+    home = fx.home(conn)
+    default = home
+    if account_id is not None:
+        default = conn.execute("SELECT currency FROM accounts WHERE id = ?", (account_id,)).fetchone()[0] or home
+    month_first = regions.month_first(settings.get(conn, "country"))
+    options = {"default_currency": default, "month_first": month_first}
+    if mapping:
+        return csv_import.parse(raw, filename, mapping=save_mapping(conn, raw, mapping), **options)
+    try:
+        return csv_import.parse(raw, filename, **options)
+    except csv_import.NeedsMapping:
+        saved = _saved_mapping(conn, raw)
+        if not saved:
+            raise
+        return csv_import.parse(raw, filename, mapping=saved, **options)
+
+
+def import_csv(
+    job: Job, raw: bytes, account_id: int | None = None, filename: str | None = None, mapping: dict | None = None
+) -> dict:
     with db.session() as conn:
+        parsed = _parse_csv(conn, raw, filename, account_id, mapping)
         if account_id is None:
             account_id = _csv_account(conn, parsed)
             if account_id is not None and parsed["iban"]:
@@ -287,12 +363,12 @@ def import_csv(job: Job, raw: bytes, account_id: int | None = None, filename: st
                 None,
                 {
                     "kind": kind,
-                    "name": parsed["account_name"] or "Girokonto",
+                    "name": parsed["account_name"] or _default_name(kind),
                     "iban": parsed["iban"],
                     "account_number": None,
                     "bic": None,
                     "blz": banks.blz_from(parsed["iban"] or ""),
-                    "currency": "EUR",
+                    "currency": parsed["currency"],
                 },
             )
         rows, skipped = store.filter_csv_overlap(conn, account_id, parsed["rows"])
@@ -307,6 +383,7 @@ def import_csv(job: Job, raw: bytes, account_id: int | None = None, filename: st
         engine.categorize(conn, f"id IN ({','.join(str(i) for i in new_ids) or 'NULL'})")
         dates = [r["date"] for r in rows]
         name = conn.execute("SELECT name FROM accounts WHERE id = ?", (account_id,)).fetchone()[0]
+    fx.after_change()
     return {
         "account_id": account_id,
         "account_name": name,

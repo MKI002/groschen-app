@@ -45,6 +45,9 @@ function remember() {
   }
 }
 
+// A currency sign: an amount in any currency.
+const SIGN_TEST = /[€$£¥₹₩₪₺]|\b(?:CHF|kr|zł|Kč|Ft|lei)\b/;
+
 const still = () =>
   document.documentElement.dataset.motion === "off" || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -55,7 +58,7 @@ function figures(veiled: boolean): Element[] {
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n && found.size < 160; n = walk.nextNode()) {
     const text = n.nodeValue ?? "";
-    if (text.length > 26 || !(veiled ? VEIL_TEST.test(text) : text.includes("€"))) continue;
+    if (text.length > 26 || !(veiled ? VEIL_TEST.test(text) : SIGN_TEST.test(text))) continue;
     let el: Element | null = n.parentElement;
     if (!el || el.closest(".hide-btn")) continue;
     // An odometer as a whole (its digits roll in columns of their own); otherwise up to the

@@ -34,7 +34,24 @@ const listeners = new Set<() => void>();
 if (typeof document !== "undefined") document.documentElement.lang = current;
 
 export const getLang = () => current;
-export const locale = () => LANGUAGES[current].locale;
+
+// The home country and currency (Settings): numbers and amounts are written the country's way,
+// dates in the language with the country's order. Unset, both follow the language.
+let region: { country: string; currency: string; numbers: string | null } = { country: "", currency: "EUR", numbers: null };
+let regionKey = "|EUR";
+export const getRegion = () => region;
+export function setRegion(country: string | null | undefined, currency: string | null | undefined, numbers: string | null) {
+  const next = { country: country ?? "", currency: currency || "EUR", numbers };
+  const key = `${next.country}|${next.currency}`;
+  if (key === regionKey) return;
+  region = next;
+  regionKey = key;
+  listeners.forEach((fn) => fn());
+}
+// For dates and words: "en-US" writes Nov 1, 2026; "en-DE" 1 Nov 2026.
+export const locale = () => (region.country ? `${current}-${region.country}` : LANGUAGES[current].locale);
+// For numbers and amounts: the country's own way (de-CH writes 1’234.50), else the language's.
+export const numLocale = () => region.numbers ?? LANGUAGES[current].locale;
 
 export function setLang(lang: Lang) {
   if (lang === current) return;
@@ -75,8 +92,9 @@ export function t(key: TKey, vars?: Vars): string {
 }
 
 // Components call this so they re-render when the language changes.
+const snapshot = () => `${current}|${regionKey}`;
 export function useT() {
-  useSyncExternalStore(subscribe, getLang, getLang);
+  useSyncExternalStore(subscribe, snapshot, snapshot);
   return t;
 }
 
