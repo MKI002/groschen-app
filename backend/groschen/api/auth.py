@@ -63,6 +63,7 @@ def status(groschen_session: str | None = Cookie(default=None)):
         user = security.user_for_token(conn, groschen_session)
         setup_complete = bool(settings.get(conn, "setup_complete"))
         language = settings.get(conn, "language")
+        region = {"country": settings.get(conn, "country") or "", "currency": settings.get(conn, "currency") or "EUR"}
         users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         has_passkeys = conn.execute("SELECT 1 FROM passkeys LIMIT 1").fetchone() is not None
         password = password_allowed(conn)
@@ -72,6 +73,8 @@ def status(groschen_session: str | None = Cookie(default=None)):
         "setup_complete": setup_complete,
         # Shown before login too, so the login page and splash use the chosen language.
         "language": language,
+        # How amounts, numbers and dates are written; only for the logged-in user.
+        "region": region if user else None,
         "user": user,
         # The login page offers the passkey button and hides the password form when it's off.
         "passkeys": has_passkeys,

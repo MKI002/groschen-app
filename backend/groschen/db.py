@@ -90,17 +90,20 @@ CREATE TABLE IF NOT EXISTS accounts (
     bic TEXT,
     blz TEXT,
     currency TEXT NOT NULL DEFAULT 'EUR',
-    balance REAL NOT NULL DEFAULT 0,
+    balance REAL NOT NULL DEFAULT 0,  -- in the home currency (see fx.py)
     balance_date TEXT,
     enabled INTEGER NOT NULL DEFAULT 1,
     manual INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    orig_balance REAL,  -- the balance in the account's own currency, when that isn't the home currency
+    fx_ok INTEGER NOT NULL DEFAULT 1  -- 0 while there's no exchange rate for it: then it isn't counted
 );
 
 CREATE TABLE IF NOT EXISTS balance_history (
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     date TEXT NOT NULL,
     balance REAL NOT NULL,
+    orig_balance REAL,
     PRIMARY KEY (account_id, date)
 );
 
@@ -132,6 +135,10 @@ CREATE TABLE IF NOT EXISTS transactions (
     needs_review INTEGER NOT NULL DEFAULT 0,
     note TEXT,
     created_at TEXT NOT NULL,
+    -- A booking in another currency than the home currency: amount is converted, orig_amount is
+    -- what the bank booked (in currency), fx_rate what one unit of it was worth. See fx.py.
+    orig_amount REAL,
+    fx_rate REAL,
     UNIQUE (account_id, fingerprint)
 );
 CREATE INDEX IF NOT EXISTS tx_date ON transactions(date);
@@ -257,6 +264,21 @@ CREATE TABLE IF NOT EXISTS dismissed_alerts (
     dismissed_at TEXT NOT NULL
 );
 
+-- Daily reference rates of the European Central Bank (opt-in, fx.py): units of currency per euro.
+CREATE TABLE IF NOT EXISTS fx_rates (
+    currency TEXT NOT NULL,
+    date TEXT NOT NULL,
+    rate REAL NOT NULL,
+    PRIMARY KEY (currency, date)
+);
+
+-- Columns the user picked for a bank file Groschen couldn't read alone, by the file's header.
+CREATE TABLE IF NOT EXISTS csv_mappings (
+    signature TEXT PRIMARY KEY,
+    mapping TEXT NOT NULL,  -- JSON: column numbers for date, amount, ...
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS netlog (
     id INTEGER PRIMARY KEY,
     ts TEXT NOT NULL,
@@ -298,6 +320,9 @@ def session():
 # tables alone, so these are added to databases from older versions on start.
 ADDED_COLUMNS = {
     "sessions": {"last_seen": "TEXT", "ip": "TEXT", "agent": "TEXT", "method": "TEXT"},
+    "transactions": {"orig_amount": "REAL", "fx_rate": "REAL"},
+    "accounts": {"orig_balance": "REAL", "fx_ok": "INTEGER NOT NULL DEFAULT 1"},
+    "balance_history": {"orig_balance": "REAL"},
 }
 
 

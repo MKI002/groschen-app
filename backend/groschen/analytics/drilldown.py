@@ -18,11 +18,12 @@ def display_name(tx: dict) -> str:
 def _load(conn, start: str, end: str) -> list[dict]:
     return db.rows(
         conn.execute(
-            "SELECT t.id, t.date, t.amount, t.counterparty, t.purpose, t.booking_text, t.category_id, t.cat_source, "
-            "t.confidence, t.needs_review, t.note, t.account_id, a.name AS account, a.kind AS account_kind, "
+            "SELECT t.id, t.date, t.amount, t.currency, t.orig_amount, t.fx_rate, t.counterparty, t.purpose, "
+            "t.booking_text, t.category_id, t.cat_source, t.confidence, t.needs_review, t.note, t.account_id, "
+            "a.name AS account, a.kind AS account_kind, "
             "c.name AS category, c.grp AS category_group, c.color AS category_color "
             "FROM transactions t JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = t.category_id "
-            "WHERE a.enabled = 1 AND t.date >= ? AND t.date <= ? ORDER BY t.date DESC, t.id DESC",
+            "WHERE a.enabled = 1 AND a.fx_ok = 1 AND t.date >= ? AND t.date <= ? ORDER BY t.date DESC, t.id DESC",
             (start, end),
         )
     )

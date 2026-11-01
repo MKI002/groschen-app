@@ -200,7 +200,8 @@ def timeline(conn, today: dt.date | None = None) -> dict:
     # Today's balance, less money already there that counts for next month (salary paid early).
     accounts = db.rows(
         conn.execute(
-            "SELECT id, name, balance, balance_date FROM accounts WHERE enabled = 1 AND manual = 0 AND kind IN (?, ?)",
+            "SELECT id, name, balance, balance_date FROM accounts "
+            "WHERE enabled = 1 AND fx_ok = 1 AND manual = 0 AND kind IN (?, ?)",
             EVERYDAY,
         )
     )
