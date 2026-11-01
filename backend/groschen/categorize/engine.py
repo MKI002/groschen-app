@@ -26,6 +26,7 @@ import numpy as np
 
 from .. import db, settings
 from . import embedder as emb
+from . import names, vendors
 from .seed import EXAMPLES, INVEST_WORDS, MERCHANTS, SAVE_WORDS
 
 ISIN_RE = re.compile(r"\b[A-Z]{2}[A-Z0-9]{9}\d\b")
@@ -239,6 +240,13 @@ class Categorizer:
 
         if ISIN_RE.search(upper) and amount < 0 and ("KAUF" in upper or "SPARPLAN" in upper or "WERTPAPIER" in upper):
             return Guess(self._cat("Investments"), "dict", 0.95, False)
+
+        shop = names.PAYPAL_SHOP.search(tx.get("purpose") or "")
+        known = vendors.match(upper, (tx.get("counterparty"), shop.group(1) if shop else None))
+        if known and (amount < 0 or known[0] in ("Online shopping", "Clothing")):
+            cat = self._cat(known[0])
+            if cat:
+                return Guess(cat, "dict", 0.9, False)
 
         for pattern, name, sign in _COMPILED:
             if sign == "+" and amount <= 0:

@@ -31,7 +31,7 @@
 
 - **Your data stays home.** SQLite in your appdata folder, no cloud account, no analytics, no
   web fonts. A network guard inside the app blocks every host except your bank.
-- **Sorts itself.** About 500 known German merchants plus a small multilingual model on the CPU.
+- **Sorts itself.** About 10,000 known shops and services from Germany, the rest of Europe and the US, plus a small multilingual model on the CPU.
   It learns from every correction, spots own transfers, refunds and savings plans on its own.
 - **Knows your month.** What is free until payday, which fixed costs are still to come, and which
   subscriptions got pricier, stopped or came back.
@@ -91,7 +91,7 @@
   simulated futures, and a page for every ETF. Also the tax-free allowance (Sparerpauschbetrag).
 - **One dark design**, calm and formal with small animations. The Animations setting (full, calm,
   off) and the system's reduced-motion switch tone it down.
-- **Categorizer**: your own choices and rules first, then about 500 known German merchants, then a
+- **Categorizer**: your own choices and rules first, then about 10,000 known shops and services (Germany, Europe, US), then a
   small multilingual sentence model (MiniLM, int8, about 120 MB) on the CPU. It learns from every
   correction. Uncertain guesses go to "Needs review". It uses about 300 MB of memory for a few
   seconds after a sync and then unloads.
