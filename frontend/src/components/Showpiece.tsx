@@ -4,7 +4,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { t } from "../i18n";
-import { dateShort, eur, eur0, intervalName } from "../lib/format";
+import { currencySign, dateShort, eur, eur0, intervalName } from "../lib/format";
 import { motionTier, useCanvasLoop } from "./Motion";
 
 // --- colour helpers ------------------------------------------------------------------------
@@ -141,6 +141,8 @@ export function FlowParticles({ bands, W, hot }: { bands: Band[]; W: number; hot
     return bands.map((b) => idx.get(`${b.from}|${b.to}`) ?? idx.set(`${b.from}|${b.to}`, idx.size).get(`${b.from}|${b.to}`)!);
   }, [bands]);
   const font = useMemo(() => (typeof document === "undefined" ? "sans-serif" : getComputedStyle(document.body).fontFamily), []);
+  // One character fits on a coin: "€", "$", "£"; a longer sign ("CHF") leaves it plain.
+  const coinSign = useMemo(() => (currencySign().length === 1 ? currencySign() : ""), []);
   // Where every comet is, each band's current speed, brightness and node glow (easing toward
   // their targets instead of switching), and the ripples still spreading.
   type State = { parts: typeof parts; u: Float64Array; speed: Float64Array; lit: Float64Array; glow: Float64Array; ripples: { j: number; y: number; t0: number }[]; born: number };
@@ -303,7 +305,7 @@ export function FlowParticles({ bands, W, hot }: { bands: Band[]; W: number; hot
         }
       }
 
-      // Coins spin as they travel; drawn normally so the € stays readable.
+      // Coins spin as they travel; drawn normally so the € (or the home currency's sign) stays readable.
       ctx.globalCompositeOperation = "source-over";
       if (coins.length) {
         ctx.textAlign = "center";
@@ -320,7 +322,7 @@ export function FlowParticles({ bands, W, hot }: { bands: Band[]; W: number; hot
           ctx.fill();
           if (Math.abs(s) > 0.5) {
             ctx.fillStyle = rgba([8, 10, 12], c.a * 0.9);
-            ctx.fillText("€", 0, 0.5);
+            ctx.fillText(coinSign, 0, 0.5);
           }
           ctx.restore();
         }

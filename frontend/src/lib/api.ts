@@ -4,9 +4,12 @@ import { getLang, t } from "../i18n";
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  // The whole answer, for errors that carry more than a message (a bank file's column preview).
+  data: unknown;
+  constructor(status: number, message: string, data: unknown = null) {
     super(message);
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -42,7 +45,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (!res.ok) {
     const detail = (data as { detail?: unknown })?.detail;
     const message = typeof detail === "string" ? detail : Array.isArray(detail) ? t("api.checkFields") : t("api.failed", { status: res.status });
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, data);
   }
   return data as T;
 }

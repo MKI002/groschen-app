@@ -1,23 +1,46 @@
-import { getLang, locale, t, type TKey } from "../i18n";
+import { getLang, getRegion, locale, numLocale, t, type TKey } from "../i18n";
 import { amountsHidden } from "./privacy";
 
-// Formatters follow the chosen language: 1.234,56 € in German, €1,234.56 in English.
+// Amounts are in the home currency (Settings) unless they say otherwise, written the home
+// country's way: 1.234,56 € in Germany, $1,234.56 in the US, CHF 1’234.50 in Switzerland.
 const cache = new Map<string, Intl.NumberFormat>();
-function fmt(digits: number | undefined) {
-  const key = `${locale()}|${digits}`;
+function fmt(currency: string, digits: number | undefined) {
+  const key = `${numLocale()}|${currency}|${digits}`;
   let f = cache.get(key);
   if (!f) {
-    f = new Intl.NumberFormat(locale(), { style: "currency", currency: "EUR", maximumFractionDigits: digits });
+    try {
+      f = new Intl.NumberFormat(numLocale(), { style: "currency", currency, maximumFractionDigits: digits });
+    } catch {
+      f = new Intl.NumberFormat(numLocale(), { style: "currency", currency: "EUR", maximumFractionDigits: digits });
+    }
     cache.set(key, f);
   }
   return f;
 }
+const isAmount = (p: Intl.NumberFormatPart) => p.type === "integer" || p.type === "group" || p.type === "decimal" || p.type === "fraction";
 // The € always follows the amount ("4,271.93 €"), in English too, where Intl would put it in front.
-function eurParts(v: number, digits: number | undefined) {
-  const parts = fmt(digits).formatToParts(v);
-  const sign = parts.find((p) => p.type === "currency")?.value ?? "€";
+// Other currencies sit where the home country puts them ($12.50, 12,50 kr).
+function moneyParts(v: number, currency: string, digits: number | undefined) {
+  const parts = fmt(currency, digits).formatToParts(v);
+  if (currency !== "EUR") return parts;
   const body = parts.filter((p) => p.type !== "currency" && !(p.type === "literal" && !p.value.trim()));
-  return [...body, { type: "literal", value: "\u00a0" }, { type: "currency", value: sign }] as Intl.NumberFormatPart[];
+  return [...body, { type: "literal", value: "\u00a0" }, { type: "currency", value: "€" }] as Intl.NumberFormatPart[];
+}
+
+// The home currency and its sign, for inputs and axes ("€", "$", "CHF").
+export const homeCurrency = () => getRegion().currency;
+export function currencySign(currency = homeCurrency()) {
+  if (currency === "EUR") return "€";
+  return fmt(currency, 0).formatToParts(1).find((p) => p.type === "currency")?.value ?? currency;
+}
+// A number with the currency sign where it belongs: "12k €", "$12k".
+export function withSign(n: string, currency = homeCurrency()) {
+  if (currency === "EUR") return `${n}\u00a0€`;
+  const parts = fmt(currency, 0).formatToParts(1);
+  const sign = currencySign(currency);
+  const before = parts.findIndex((p) => p.type === "currency") < parts.findIndex((p) => p.type === "integer");
+  const gap = parts.some((p) => p.type === "literal" && !p.value.trim()) ? "\u00a0" : "";
+  return before ? `${sign}${gap}${n}` : `${n}${gap}${sign}`;
 }
 
 // A real minus sign for amounts and percentages: the hyphen is hard to see and runs into the
@@ -30,17 +53,22 @@ const minus = (s: string) => s.replace("-", "\u2212");
 const VEIL_CHAR: Record<string, string> = { ".": "\uE00A", ",": "\uE00B" };
 export const veiled = (s: string) => s.replace(/[\d.,]/g, (c) => VEIL_CHAR[c] ?? String.fromCharCode(0xe000 + Number(c)));
 export const nines = (s: string) => veiled(s.replace(/\d/g, "9"));
-function money(v: number, digits: number | undefined) {
-  const parts = eurParts(v, digits);
+function format(v: number, currency: string, digits: number | undefined) {
+  const parts = moneyParts(v, currency, digits);
   if (!amountsHidden()) return minus(parts.map((p) => p.value).join(""));
-  return minus(parts.map((p) => (p.type === "integer" || p.type === "group" || p.type === "decimal" || p.type === "fraction" ? nines(p.value) : p.value)).join(""));
+  return minus(parts.map((p) => (isAmount(p) ? nines(p.value) : p.value)).join(""));
 }
-export const eur = (v: number | null | undefined) => (v === null || v === undefined ? "–" : money(v, undefined));
-export const eur0 = (v: number | null | undefined) => (v === null || v === undefined ? "–" : money(v, 0));
+// eur() and eur0() write an amount in the home currency (the euro unless Settings say otherwise).
+export const eur = (v: number | null | undefined) => (v === null || v === undefined ? "–" : format(v, homeCurrency(), undefined));
+export const eur0 = (v: number | null | undefined) => (v === null || v === undefined ? "–" : format(v, homeCurrency(), 0));
+// An amount in its own currency: what the bank booked for money in another currency.
+export const money = (v: number | null | undefined, currency: string) => (v === null || v === undefined ? "–" : format(v, currency, undefined));
 // Fixed sums Groschen explains itself with (the 1,000 € tax allowance) say nothing about anyone's
-// money, so they stay when amounts are hidden.
-export const eurPublic = (v: number, digits?: number) => minus(eurParts(v, digits).map((p) => p.value).join(""));
-export const num = (v: number, d = 2) => v.toLocaleString(locale(), { minimumFractionDigits: d, maximumFractionDigits: d });
+// money, so they stay when amounts are hidden. Those are euros by law.
+export const eurPublic = (v: number, digits?: number) => minus(moneyParts(v, "EUR", digits).map((p) => p.value).join(""));
+// A sum in the home currency Groschen explains itself with ("from 300 €"): shown when amounts are hidden.
+export const homePublic = (v: number, digits?: number) => minus(moneyParts(v, homeCurrency(), digits).map((p) => p.value).join(""));
+export const num = (v: number, d = 2) => v.toLocaleString(numLocale(), { minimumFractionDigits: d, maximumFractionDigits: d });
 // A plain number that tells how much: a fund's shares, a price on a chart's axis.
 export const figure = (v: number, d = 2) => (amountsHidden() ? nines(num(v, d)) : num(v, d));
 
@@ -48,7 +76,7 @@ export const figure = (v: number, d = 2) => (amountsHidden() ? nines(num(v, d)) 
 // the same way. A sum is a number with a decimal comma or next to EUR/€; dates ("05.10", "07.10.2026")
 // and plain numbers stay.
 // (No lookbehind: older Safari can't read it, and the whole app would fail to start.)
-const SUM_IN_TEXT = /(^|[^\d.,])((?:\d{1,3}(?:\.\d{3})+|\d+),\d{2})(?![.,]?\d)|((?:EUR|€) ?)\d(?:[\d.,]*\d)?|\d(?:[\d.,]*\d)?(?= ?(?:EUR|€))/g;
+const SUM_IN_TEXT = /(^|[^\d.,])((?:\d{1,3}(?:\.\d{3})+|\d+),\d{2})(?![.,]?\d)|((?:EUR|USD|GBP|CHF|€|\$|£) ?)\d(?:[\d.,]*\d)?|\d(?:[\d.,]*\d)?(?= ?(?:EUR|USD|GBP|CHF|€|\$|£))/g;
 const IBAN_IN_TEXT = /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}(?: ?[A-Z0-9]{1,3})?\b/g;
 export function veil(text: string) {
   if (!amountsHidden()) return text;
@@ -56,7 +84,7 @@ export function veil(text: string) {
     .replace(IBAN_IN_TEXT, (m) => `${m.slice(0, 2)}${nines(m.slice(2))}`)
     .replace(SUM_IN_TEXT, (m, before?: string, sum?: string, cur?: string) => (sum !== undefined ? `${before}${nines(sum)}` : `${cur ?? ""}${nines(m.slice((cur ?? "").length))}`));
 }
-export const int = (v: number) => v.toLocaleString(locale());
+export const int = (v: number) => v.toLocaleString(numLocale());
 // German puts a space before the percent sign; a non-breaking one, so "15,4 %" never splits.
 const pctSign = () => (getLang() === "de" ? "\u00a0%" : "%");
 export const pct = (v: number | null | undefined, d = 1) =>

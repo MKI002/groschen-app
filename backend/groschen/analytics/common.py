@@ -80,7 +80,7 @@ def load_transactions(conn, start: str, end: str) -> list[dict]:
             "SELECT t.id, t.date, t.amount, t.counterparty, t.counterparty_iban, t.purpose, t.booking_text, t.category_id, "
             "t.cat_source, t.account_id, "
             "a.kind AS account_kind FROM transactions t JOIN accounts a ON a.id = t.account_id "
-            "WHERE t.date >= ? AND t.date <= ? AND a.enabled = 1 ORDER BY t.date",
+            "WHERE t.date >= ? AND t.date <= ? AND a.enabled = 1 AND a.fx_ok = 1 ORDER BY t.date",
             (start, end),
         )
     )

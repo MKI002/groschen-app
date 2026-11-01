@@ -7,15 +7,17 @@ import { SecuritySettings } from "../components/Security";
 import { Icon } from "../components/Icons";
 import { EGGS, eggHint, eggName, eggsOn, resetFound, setEggsOn, useFoundEggs } from "../components/Eggs";
 import { motionPref, setMotionPref, type MotionPref } from "../components/Motion";
+import { useCsvImport } from "../components/CsvImport";
 import { Card, Disclosure, ErrorNote, Loading, Modal, NumberSetting, Seg, Spinner, Switch, Tabs, useApi, useConfirm, useToast } from "../components/UI";
 import { LangPicker } from "../components/LangPicker";
-import { catName, getLang, t, useT, type Key } from "../i18n";
+import { catName, getLang, t, useLang, useT, type Key } from "../i18n";
 import { api } from "../lib/api";
 import { useApp } from "../lib/app";
-import { colorVar, dateShort, eur, eurPublic, relTime, whenNext } from "../lib/format";
+import { colorVar, currencySign, dateShort, eur, eurPublic, homePublic, num, relTime, whenNext, withSign } from "../lib/format";
+import { applyRegion, COUNTRIES, countryList, CURRENCIES, currencyName, fintsCountry, germanTax } from "../lib/regions";
 import { redirect } from "../lib/router";
 import { PageHeader } from "./Shell";
-import type { Category, Connection, Learned, Payday, Paydays, Rule, SettingsInfo, SettingsValues } from "../lib/types";
+import type { BankAccount, Category, Connection, Learned, Payday, Paydays, Rule, SettingsInfo, SettingsValues } from "../lib/types";
 
 function Row({ title, sub, children }: { title: ReactNode; sub?: ReactNode; children?: ReactNode }) {
   return (
@@ -246,26 +248,23 @@ function ConnectionCard({ c, reminder }: { c: Connection; reminder: number }) {
 // --- import ------------------------------------------------------------------------
 
 // Bank statements come in here; the price history is imported on the Investments page where it is used.
-function CsvImport() {
+function CsvImport({ fints }: { fints: boolean }) {
   const toast = useToast();
   useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { importFiles, dialog } = useCsvImport(
+    (r) => {
+      toast(t("set.importedTx", { n: r.imported, account: r.account_name, skipped: r.skipped ?? 0 }));
+      window.dispatchEvent(new Event("groschen:synced"));
+    },
+    setError,
+  );
   async function upload(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true);
     setError(null);
-    for (const f of Array.from(files)) {
-      const form = new FormData();
-      form.append("file", f);
-      try {
-        const r = await api.upload<{ imported: number; account_name: string; skipped?: number }>("/import/csv", form);
-        toast(t("set.importedTx", { n: r.imported, account: r.account_name, skipped: r.skipped ?? 0 }));
-        window.dispatchEvent(new Event("groschen:synced"));
-      } catch (e) {
-        setError(`${f.name}: ${(e as Error).message}`);
-      }
-    }
+    await importFiles(files);
     setBusy(false);
   }
   return (
@@ -275,10 +274,11 @@ function CsvImport() {
           {busy ? <Spinner /> : <Icon name="upload" size={15} />}
           {t("set.chooseFiles")}
         </label>
-        <input id="set-csv" type="file" accept=".csv,text/csv" multiple hidden onChange={(e) => upload(e.target.files)} />
+        <input id="set-csv" type="file" accept=".csv,.txt,text/csv" multiple hidden onChange={(e) => upload(e.target.files)} />
       </Row>
-      <InstituteList />
+      {fints && <InstituteList />}
       {error && <p className="err">{error}</p>}
+      {dialog}
     </Card>
   );
 }
@@ -577,9 +577,9 @@ function SalaryCard({ v, set }: { v: SettingsValues; set: <K extends keyof Setti
             />
           </Row>
         ))}
-      {enabled && data && !data.sources.length && <p className="txsum">{t("pay.none", { amount: eurPublic(300) })}</p>}
+      {enabled && data && !data.sources.length && <p className="txsum">{t("pay.none", { amount: homePublic(300) })}</p>}
       <Row title={t("set.hints.buffer")} sub={t("set.hints.bufferSub")}>
-        <NumberSetting value={v.safe_buffer} onSave={(x) => set("safe_buffer", x)} label={t("set.hints.bufferLabel")} unit="€" step={50} min={0} max={1000000} />
+        <NumberSetting value={v.safe_buffer} onSave={(x) => set("safe_buffer", x)} label={t("set.hints.bufferLabel")} unit={currencySign()} step={50} min={0} max={1000000} />
       </Row>
     </Card>
   );
@@ -656,6 +656,140 @@ function EasterEggs() {
         />
       </span>
     </Row>
+  );
+}
+
+// --- country and currency ----------------------------------------------------------------
+
+// Where the user lives: how amounts and dates are written, the currency every total is in, and the
+// exchange rates that bring money in other currencies into it.
+function RegionCard({ info, set, reload }: { info: SettingsInfo; set: <K extends keyof SettingsValues>(key: K, value: SettingsValues[K]) => Promise<void>; reload: () => void }) {
+  const lang = useLang();
+  useT();
+  const toast = useToast();
+  const v = info.values;
+  const fx = info.fx;
+  const { data: accounts, reload: reloadAccounts } = useApi<BankAccount[]>("/accounts");
+  const [refreshing, setRefreshing] = useState(false);
+  const bankAccounts = (accounts ?? []).filter((a) => !a.manual && a.kind !== "depot");
+
+  async function save(values: Partial<SettingsValues>) {
+    try {
+      await api.patch("/settings", values);
+      applyRegion({ country: values.country ?? v.country, currency: values.currency ?? v.currency });
+      reload();
+      reloadAccounts();
+      window.dispatchEvent(new Event("groschen:synced"));
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+  // A new country brings its currency along; a different one can be picked right below.
+  const pickCountry = (country: string) => save({ country, currency: COUNTRIES[country]?.currency ?? v.currency });
+
+  async function setAccountCurrency(a: BankAccount, currency: string) {
+    try {
+      await api.patch(`/accounts/${a.id}`, { currency });
+      toast(t("fx.accountSet", { name: a.name, currency }));
+      reloadAccounts();
+      reload();
+      window.dispatchEvent(new Event("groschen:synced"));
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
+  const rate = (code: string, value: number) => `${withSign("1", code)} = ${withSign(num(value, value < 0.1 ? 4 : value < 10 ? 3 : 2), v.currency)}`;
+  const uncounted = fx?.uncounted ?? [];
+
+  return (
+    <Card title={t("set.region")} sub={t("set.region.sub")}>
+      <Row title={t("set.country")} sub={t("set.country.sub")}>
+        <select className="pill" aria-label={t("set.country")} value={v.country || ""} onChange={(e) => pickCountry(e.target.value)}>
+          {!v.country && <option value="">{t("set.country.none")}</option>}
+          {countryList(lang).map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row title={t("set.currency")} sub={t("set.currency.sub")}>
+        <select className="pill" aria-label={t("set.currency")} value={v.currency} onChange={(e) => save({ currency: e.target.value })}>
+          {CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {c} · {currencyName(c, lang)}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row title={t("set.rates")} sub={t("set.rates.sub", { host: fx?.host ?? "www.ecb.europa.eu" })}>
+        <Switch label={t("set.rates")} checked={v.online_rates} onChange={(x) => void set("online_rates", x).then(() => setTimeout(reload, 4000))} />
+      </Row>
+      {fx && fx.foreign.length > 0 && (
+        <Row
+          title={t("set.rates.now")}
+          sub={
+            fx.rates.some((r) => r.rate)
+              ? `${fx.rates.filter((r) => r.rate).map((r) => rate(r.currency, r.rate!)).join(" · ")}${fx.last ? ` · ${t("set.rates.when", { when: relTime(fx.last) })}` : ""}`
+              : v.online_rates
+                ? t("set.rates.waiting")
+                : t("set.rates.off", { currencies: fx.foreign.join(", ") })
+          }
+        >
+          {v.online_rates && (
+            <button
+              className="btn sm"
+              disabled={refreshing}
+              onClick={async () => {
+                setRefreshing(true);
+                try {
+                  await api.post("/rates/refresh");
+                  setTimeout(() => {
+                    reload();
+                    setRefreshing(false);
+                  }, 4000);
+                } catch (e) {
+                  toast((e as Error).message);
+                  setRefreshing(false);
+                }
+              }}
+            >
+              {refreshing ? <Spinner /> : <Icon name="refresh" size={15} />}
+              {t("fund.refresh")}
+            </button>
+          )}
+        </Row>
+      )}
+      {uncounted.length > 0 && (
+        <div className="insight">
+          <Icon name="warn" size={18} />
+          <span>
+            <b>{t("fx.uncounted", { accounts: uncounted.map((a) => `${a.name} (${a.currency})`).join(", ") })}</b>{" "}
+            {v.online_rates ? t("fx.uncounted.noRate") : t("fx.uncounted.turnOn")}
+          </span>
+        </div>
+      )}
+      {bankAccounts.length > 0 && (
+        <Disclosure label={t("set.acctCurrency")}>
+          <p className="txsum">{t("set.acctCurrency.sub")}</p>
+          <div className="acct-cur">
+            {bankAccounts.map((a) => (
+              <div key={a.id}>
+                <span>{a.name}</span>
+                <select className="pill" aria-label={t("set.acctCurrency.label", { name: a.name })} value={a.currency ?? "EUR"} onChange={(e) => setAccountCurrency(a, e.target.value)}>
+                  {CURRENCIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c} · {currencyName(c, lang)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </Disclosure>
+      )}
+    </Card>
   );
 }
 
@@ -749,6 +883,7 @@ export default function Settings() {
   const panels: Record<Tab, ReactNode> = {
     bank: (
       <>
+        {(fintsCountry(v.country) || connections.length > 0) && (
         <Card
           title={t("set.banks")}
           right={
@@ -761,6 +896,8 @@ export default function Settings() {
             <ConnectionCard key={c.id} c={c} reminder={v.reminder_days} />
           ))}
           {!connections.length && <p className="txsum">{t("set.noBank")}</p>}
+          {connections.length > 0 && (
+          <>
           <Row title={t("set.schedule")} sub={data.next_runs.sync ? t("set.nextSync", { when: whenNext(data.next_runs.sync) }) : t("set.schedule.sub")}>
             <select className="pill" aria-label={t("set.schedule")} value={v.sync_schedule} onChange={(e) => set("sync_schedule", e.target.value as SettingsValues["sync_schedule"])}>
               <option value="daily">{t("sched.daily")}</option>
@@ -776,8 +913,11 @@ export default function Settings() {
               options={[30, 15, 7].map((n) => [String(n), t("remind.before", { n })])}
             />
           </Row>
+          </>
+          )}
         </Card>
-        <CsvImport />
+        )}
+        <CsvImport fints={fintsCountry(v.country)} />
       </>
     ),
     categories: (
@@ -848,7 +988,7 @@ export default function Settings() {
             <Switch label={t("pref.unusual")} checked={v.unusual_alerts} onChange={(x) => set("unusual_alerts", x)} />
           </Row>
           <Row title={t("set.hints.large")} sub={t("set.hints.largeSub")}>
-            <NumberSetting value={v.alert_large} onSave={(x) => set("alert_large", x)} label={t("set.hints.largeLabel")} unit="€" step={50} min={0} max={100000} />
+            <NumberSetting value={v.alert_large} onSave={(x) => set("alert_large", x)} label={t("set.hints.largeLabel")} unit={currencySign()} step={50} min={0} max={100000} />
           </Row>
           <Row title={t("set.hints.dismissed")} sub={t("set.hints.dismissedSub")}>
             <button className="btn sm" onClick={restoreHints}>
@@ -864,9 +1004,11 @@ export default function Settings() {
         <Row title={t("set.rate")} sub={t("set.rate.sub")}>
           <NumberSetting value={v.risk_free_rate} onSave={(x) => set("risk_free_rate", x)} label={t("set.rate.label")} unit="%" step={0.05} min={-5} max={20} width={80} />
         </Row>
-        <Row title={t("set.allowance")} sub={t("set.allowance.sub", { single: eurPublic(1000, 0), couple: eurPublic(2000, 0) })}>
-          <NumberSetting value={v.tax_allowance} onSave={(x) => set("tax_allowance", x)} label={t("set.allowance.label")} unit="€" step={100} min={0} max={10000} />
-        </Row>
+        {germanTax(v.country) && (
+          <Row title={t("set.allowance")} sub={t("set.allowance.sub", { single: eurPublic(1000, 0), couple: eurPublic(2000, 0) })}>
+            <NumberSetting value={v.tax_allowance} onSave={(x) => set("tax_allowance", x)} label={t("set.allowance.label")} unit="€" step={100} min={0} max={10000} />
+          </Row>
+        )}
         <Row title={t("set.online")} sub={t("set.online.sub", { host: data.market.host })}>
           <Switch label={t("set.online")} checked={v.online_prices} onChange={(x) => set("online_prices", x)} />
         </Row>
@@ -926,9 +1068,10 @@ export default function Settings() {
           <Row
             title={t("net.internet")}
             sub={
-              v.online_prices
-                ? t("net.internet.subPrices", { hosts: data.network.allowed_hosts.filter((h) => h !== data.market.host).join(", ") || t("net.yourBank"), prices: data.market.host })
-                : t("net.internet.sub", { hosts: data.network.allowed_hosts.join(", ") || t("net.yourBank") })
+              (v.online_prices
+                ? t("net.internet.subPrices", { hosts: data.network.allowed_hosts.filter((h) => h !== data.market.host && h !== data.fx?.host).join(", ") || t("net.yourBank"), prices: data.market.host })
+                : t("net.internet.sub", { hosts: data.network.allowed_hosts.filter((h) => h !== data.fx?.host).join(", ") || t("net.yourBank") })) +
+              (v.online_rates && data.fx ? ` ${t("net.rates", { host: data.fx.host })}` : "")
             }
           >
             <span className="tag good">{v.online_prices ? t("net.bankAndPrices") : t("net.bankOnly")}</span>
@@ -968,6 +1111,7 @@ export default function Settings() {
             </button>
           </Row>
         </Card>
+        <RegionCard info={data} set={set} reload={reload} />
         <Card title={t("set.look")}>
           <Row title={t("common.language")} sub={t("look.language.sub")}>
             <LangPicker onPick={(l) => set("language", l)} />

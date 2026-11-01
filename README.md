@@ -5,7 +5,7 @@
 <h1 align="center">Groschen</h1>
 
 <p align="center">
-  <b>A private, self-hosted finance dashboard for German bank accounts.</b><br>
+  <b>A private, self-hosted finance dashboard, wherever you live.</b><br>
   Runs as one Docker container on your own server, sorts your money by itself with a small
   built-in AI model, and talks to nobody on the internet except your bank.
 </p>
@@ -38,7 +38,11 @@
 - **Depot without the noise.** Real gain and loss without counting the money you paid in,
   zoomable charts, a projection with 800 simulated futures.
 - **Everything in the browser.** Setup wizard, bank connection, backups, passkeys: no config files.
-  English and German.
+  English and German, with numbers, dates and money written the way your country writes them.
+- **Any country, any currency.** Pick where you live and your home currency on first start. Money
+  in other currencies is converted with the European Central Bank's daily reference rates (off
+  until you switch it on), and the original amount stays visible. Any bank's CSV export imports:
+  Groschen asks once which column is which.
 
 ## Screenshots
 
@@ -65,7 +69,8 @@
 
 ## What's inside
 
-- **Setup wizard** on first start: your login, the bank connection, CSV import of older history,
+- **Setup wizard** on first start: your login, where you live (home currency, number and date
+  format), the bank connection, CSV import of older history,
   categorizer and schedule, first sync.
 - **Overview**: what is free to spend until payday, with every charge still to come on a line to
   payday, a few hints worth a look, and where the money went (as a flow, a timeline or by month).
@@ -100,7 +105,9 @@
 ## Privacy and network
 
 - The only outgoing connections are to the FinTS servers of the banks you connected (for ING
-  `fints.ing.de`), plus `www.justetf.com` once you switch on Online ETF prices. A guard inside the app refuses every other address, and
+  `fints.ing.de`), plus `www.justetf.com` once you switch on Online ETF prices and
+  `data-api.ecb.europa.eu` (the ECB's public reference rates, no account) once you switch on
+  Exchange rates. A guard inside the app refuses every other address, and
   **Settings → Export & privacy** shows a log of every connection it made.
 - No update checks, analytics, web fonts or map tiles. Fonts, icons and charts are built in.
 - The bank PIN is stored encrypted. The key is `secret.key` in the data folder and is never
@@ -109,6 +116,13 @@
 - Don't forward port 8420 on your router. For access from outside, use Tailscale or WireGuard.
 
 ## Banks: what to know
+
+**Outside Germany**, or at any bank without FinTS, export your transactions as CSV in your online
+banking and import them in the wizard or under **Settings → Bank & import**. Groschen reads the
+common layouts (Chase, Revolut and most others with a Date and an Amount column, in English,
+French, Dutch, Spanish and more), with any decimal mark and date order. For a file it doesn't know, it
+shows the first rows and asks once which column is the date and which the amount; the next file
+from that bank goes through by itself.
 
 Groschen talks to German banks over **FinTS** (also called HBCI), read-only, and imports their
 **CSV exports** for older history or for banks without FinTS. Pick your bank in the wizard or under
@@ -286,7 +300,7 @@ the next build prints the new ones as a note on the run.
 
 ```
 backend/groschen/
-  bank/         bank list, FinTS client, CSV import for German banks, storing transactions, sync
+  bank/         bank list, FinTS client, CSV import for any bank, storing transactions, sync
   categorize/   rules, merchant list, model, learning
   analytics/    cash flow, net worth, portfolio statistics, subscriptions, savings plans
   api/          HTTP endpoints

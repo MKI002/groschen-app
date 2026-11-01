@@ -41,7 +41,7 @@ def _income_rows(conn) -> list[dict]:
     rows = db.rows(
         conn.execute(
             "SELECT t.id, t.date, t.amount, t.counterparty, t.purpose, t.category_id, t.cat_source FROM transactions t "
-            "JOIN accounts a ON a.id = t.account_id WHERE t.amount > 0 AND a.enabled = 1 ORDER BY t.date"
+            "JOIN accounts a ON a.id = t.account_id WHERE t.amount > 0 AND a.enabled = 1 AND a.fx_ok = 1 ORDER BY t.date"
         )
     )
     out = []

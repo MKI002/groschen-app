@@ -137,7 +137,10 @@ def _fund_names(conn) -> dict[str, str]:
 
 def _savings_transfers(conn, today: dt.date, invest_ids: set[int]) -> dict[str, list[dict]]:
     """Monthly transfers from a current account to savings, grouped by who they go to and their text."""
-    accounts = {a["id"]: a for a in db.rows(conn.execute("SELECT id, kind, name, iban FROM accounts WHERE enabled = 1"))}
+    accounts = {
+        a["id"]: a
+        for a in db.rows(conn.execute("SELECT id, kind, name, iban FROM accounts WHERE enabled = 1 AND fx_ok = 1"))
+    }
     own_savings = {savings._norm_iban(a["iban"]) for a in accounts.values() if a["kind"] == "savings" and a["iban"]}
     by_tx, by_cp = savings._overrides(conn)
     cats = common.categories(conn)
@@ -145,7 +148,8 @@ def _savings_transfers(conn, today: dt.date, invest_ids: set[int]) -> dict[str, 
         conn.execute(
             "SELECT t.id, t.date, t.amount, t.account_id, t.counterparty, t.counterparty_iban, t.purpose, t.booking_text, "
             "t.category_id FROM transactions t JOIN accounts a ON a.id = t.account_id "
-            "WHERE a.kind = 'checking' AND a.enabled = 1 AND t.amount < 0 AND t.date <= ? ORDER BY t.date, t.id",
+            "WHERE a.kind = 'checking' AND a.enabled = 1 AND a.fx_ok = 1 "
+            "AND t.amount < 0 AND t.date <= ? ORDER BY t.date, t.id",
             (today.isoformat(),),
         )
     )
