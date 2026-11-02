@@ -43,6 +43,18 @@ CREATE TABLE IF NOT EXISTS passkeys (
     last_used_at TEXT
 );
 
+-- Phones that log in with a fingerprint (the Android app): the public half of a key pair kept
+-- in the phone's secure hardware. See devices.py.
+CREATE TABLE IF NOT EXISTS devices (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    key_id TEXT UNIQUE NOT NULL,
+    public_key BLOB NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_used_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS login_events (
     id INTEGER PRIMARY KEY,
     at TEXT NOT NULL,
@@ -319,7 +331,7 @@ def session():
 # Columns added after a table first shipped. CREATE TABLE IF NOT EXISTS leaves existing
 # tables alone, so these are added to databases from older versions on start.
 ADDED_COLUMNS = {
-    "sessions": {"last_seen": "TEXT", "ip": "TEXT", "agent": "TEXT", "method": "TEXT"},
+    "sessions": {"last_seen": "TEXT", "ip": "TEXT", "agent": "TEXT", "method": "TEXT", "device_id": "INTEGER"},
     "transactions": {"orig_amount": "REAL", "fx_rate": "REAL"},
     "accounts": {"orig_balance": "REAL", "fx_ok": "INTEGER NOT NULL DEFAULT 1"},
     "balance_history": {"orig_balance": "REAL"},

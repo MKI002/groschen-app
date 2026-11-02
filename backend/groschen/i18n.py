@@ -75,6 +75,12 @@ DE = {
     "Add a passkey before turning off the password login.": (
         "Leg zuerst einen Passkey an, bevor du die Anmeldung mit Passwort ausschaltest."
     ),
+    "The fingerprint login didn't work. Log in with your password.": (
+        "Die Anmeldung mit Fingerabdruck hat nicht geklappt. Melde dich mit deinem Passwort an."
+    ),
+    "The fingerprint login couldn't be set up. Please try again.": (
+        "Die Anmeldung mit Fingerabdruck konnte nicht eingerichtet werden. Bitte versuch es noch einmal."
+    ),
     "Wrong username or password.": "Benutzername oder Passwort falsch.",
     "The current password isn't right.": "Das aktuelle Passwort stimmt nicht.",
     "Missing request header.": "Anfrage-Header fehlt.",

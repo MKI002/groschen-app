@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Groschen" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/groschen_bg</item>
+        <item name="android:colorBackground">@color/groschen_bg</item>
+        <item name="android:colorAccent">@color/groschen_accent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <!-- The start screen: the coin on the dark background, no white flash. -->
+        <item name="android:windowSplashScreenBackground">@color/groschen_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>
