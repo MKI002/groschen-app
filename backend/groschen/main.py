@@ -7,7 +7,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from . import config, i18n
-from .api import auth, bank, data, manage
+from .api import auth, bank, data, logos, manage
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_HEADER = "x-groschen"
@@ -81,7 +81,7 @@ def create_app() -> FastAPI:
     def health():
         return {"ok": True, "version": config.VERSION, "build": build}
 
-    for module in (auth, bank, data, manage):
+    for module in (auth, bank, data, logos, manage):
         app.include_router(module.router, prefix="/api")
 
     @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)

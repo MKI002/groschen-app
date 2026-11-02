@@ -81,6 +81,12 @@
   **spending** by group and category with every day of the year, **fixed costs** (as a list, a
   calendar or an orbit), **net worth** and your own **groups** (a car, a flat you rent out).
   In English or German.
+- **Brand logos**: about 3,250 shops and services show their logo on their own colour (from
+  [Simple Icons](https://simpleicons.org), public domain, built into the image). Click a
+  merchant's logo in its details to pick another one, keep just the letter, or add your own
+  picture: click, drag it in (also from a website) or paste a copied image, then move and zoom it
+  behind the round cutout. Brand names and logos belong to their owners; see
+  [the notice](frontend/src/data/logos/NOTICE.md).
 - **Fixed costs that keep themselves up to date**: Groschen notices when a subscription gets more
   expensive or cheaper, stops, starts, or comes back after a pause, and says so on the Overview.
 - **Savings plans found on their own**: ETF savings plans, Kleingeld Plus and standing orders to
@@ -112,7 +118,7 @@
   `data-api.ecb.europa.eu` (the ECB's public reference rates, no account) once you switch on
   Exchange rates. A guard inside the app refuses every other address, and
   **Settings → Export & privacy** shows a log of every connection it made.
-- No update checks, analytics, web fonts or map tiles. Fonts, icons and charts are built in.
+- No update checks, analytics, web fonts or map tiles. Fonts, icons, brand logos and charts are built in.
 - The bank PIN is stored encrypted. The key is `secret.key` in the data folder and is never
   included in backups. The app password is stored as an Argon2 hash.
 - Nothing secret lives in this repository. The image is built by GitHub from the code alone.
@@ -330,3 +336,11 @@ unraid/         Unraid container template
 docker-compose.yml  example for Docker Compose
 Dockerfile      web app, packages, model and app in one image
 ```
+
+## License
+
+Copyright © 2026 MKI002. Groschen is free software under the
+[GNU Affero General Public License v3.0](LICENSE): you may use, change and share it, and a copy
+you share or run for others must stay open source under the same licence and keep the credit
+to the author (see [NOTICE](NOTICE)). Brand logos come from Simple Icons (public domain) and
+belong to their owners; see [the logo notice](frontend/src/data/logos/NOTICE.md).
