@@ -334,6 +334,7 @@ export const de: Record<Key, string> = {
   "logo.up.pasteSub": "kopiertes Bild",
   "logo.up.release": "Loslassen, um dieses Bild zu nehmen",
   "logo.up.linkOnly": "Die Seite gibt ihre Bilder nicht an andere Seiten heraus. Rechtsklick aufs Bild, „Grafik kopieren“, dann hier Strg+V.",
+  "logo.up.linkFrom": "Dieses große Bild kommt von {host}, und die Seite gibt ihre Bilder nicht an andere Seiten heraus. Zieh stattdessen das kleine Vorschaubild aus den Google-Ergebnissen rein (für ein Logo scharf genug) oder Rechtsklick aufs Bild, „Grafik kopieren“, dann Strg+V.",
   "logo.up.unreadable": "Das sieht nicht nach einem Bild aus. Versuch es mit PNG, JPEG, WebP oder GIF.",
   "logo.up.tooBig": "Das Bild ist größer als 25 MB.",
   "logo.up.moveHint": "Ziehen zum Verschieben, scrollen oder Regler zum Zoomen.",
