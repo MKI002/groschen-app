@@ -204,8 +204,8 @@ jobs:
           The native Android app for your own Groschen server (Android 11 or newer).
 
           **Install:** open this page on your phone, tap \`groschen-$VERSION.apk\` below and allow the
-          install. **Update:** install a newer APK over the old one, or let
-          [Obtainium](https://github.com/ImranR98/Obtainium) watch this repository.
+          install. **Update:** the app finds new versions here by itself and installs them after a
+          tap (Settings → Updates in the app). Or install a newer APK over the old one.
 
           SHA-256 of the APK: \`$sum\`
           EOF

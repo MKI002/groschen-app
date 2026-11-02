@@ -16,6 +16,8 @@ the web interface. It talks to your server's API and nothing else.
   English.
 - **Fingerprint login:** log in once with your password, then the fingerprint (or the phone's
   PIN) opens the app.
+- **Updates in the app:** new versions from GitHub Releases, checked and installed from the
+  app.
 
 Settings, the bank connection, backups and everything else stay in the web interface; the app
 opens it in the browser when needed. Android 11 or newer.
@@ -27,9 +29,19 @@ opens it in the browser when needed. Android 11 or newer.
 2. Allow your browser to install apps when Android asks, then tap **Install**.
 3. Open Groschen and type your server's address, for example `192.168.178.20:8420`.
 
-**Updates:** install a newer APK over the old one; your login and settings stay. To be told
-about new versions, add this repository to [Obtainium](https://github.com/ImranR98/Obtainium)
-(it picks the APK from the releases by itself).
+**Updates:** the app looks for a new version under this repository's Releases once a day. On
+Wi-Fi it downloads it by itself, and a card on the Overview offers to install it. Before it is
+installed, the app checks that the file matches what GitHub lists (size and SHA-256) and that it
+is signed with the same key as the installed app. Android asks you once to allow Groschen to
+install apps, and the first update may ask for a confirmation. On Android 12 and newer, later
+updates usually go through without asking. Your login and settings stay.
+
+- The update check only talks to GitHub (`api.github.com`, `github.com` and the hosts GitHub
+  keeps release files on), over https, and follows no redirect to any other host. It sends no
+  login and nothing about you; GitHub sees your phone's IP address.
+- Turn it off in the app under **Settings → Updates**. You can then install a newer APK over the
+  old one by hand, or let [Obtainium](https://github.com/ImranR98/Obtainium) watch this repository.
+- A build of your own (see below) doesn't look for updates.
 
 ## The server address and plain http
 

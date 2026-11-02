@@ -79,8 +79,10 @@ fun OverviewPage(model: AppModel, list: LazyListState) {
     val fmt = LocalFmt.current
     val state = model.overview
     val data = state.value
+    val update = model.appUpdate.cardRelease
     LazyColumn(state = list, contentPadding = PagePadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item { PageHeader(fmt.weekdayToday(), s.tabOverview) }
+        if (update != null) item(key = "update") { UpdateCard(model) }
         if (data == null) {
             val error = state.error
             if (error != null) {
