@@ -8,7 +8,9 @@ import { Spinner } from "./UI";
 const STAGE = 240; // px, the round cutout fills the square stage
 const OUT = 256; // px of the saved picture
 const MAX_ZOOM = 5;
-const MIN_ZOOM = 0.3; // below 1 the picture gets smaller than the circle and the rest is filled in
+// Zoom 1 fills the circle with the picture's short side. Below 1 it gets smaller and the rest is
+// filled in, down to the point where even its long side spans only 30% of the circle.
+const minZoomOf = (w: number, h: number) => (0.3 * Math.min(w, h)) / Math.max(w, h);
 // Logos on a plain background are sized alike, as the built-in ones are: by their area (a wide
 // word mark gets as much room as a square mark), and never wider than SIDE of the circle.
 const AREA = 0.46;
@@ -148,7 +150,7 @@ function framing(w: number, h: number, look: Look): { zoom: number; pos: Pos } |
   const bh = b.h * h;
   const base = STAGE / Math.min(w, h);
   const fit = Math.min((STAGE * AREA) / Math.sqrt(bw * bh), (STAGE * SIDE) / Math.max(bw, bh));
-  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fit / base));
+  const zoom = Math.min(MAX_ZOOM, Math.max(minZoomOf(w, h), fit / base));
   const s = base * zoom;
   return { zoom, pos: { x: (w / 2 - (b.x + b.w / 2) * w) * s, y: (h / 2 - (b.y + b.h / 2) * h) * s } };
 }
@@ -292,7 +294,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
     const step = (now: number) => {
       const p = Math.min(1, (now - t0) / GLIDE);
       const e = springOut(p);
-      setZoom(Math.max(MIN_ZOOM * 0.9, from.zoom + (to.zoom - from.zoom) * e));
+      setZoom(Math.max(0.01, from.zoom + (to.zoom - from.zoom) * e));
       setPos({ x: from.pos.x + (to.pos.x - from.pos.x) * e, y: from.pos.y + (to.pos.y - from.pos.y) * e });
       if (p < 1) anim.current = requestAnimationFrame(step);
       else setGliding(false);
@@ -456,6 +458,10 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
   };
 
   const base = pic ? STAGE / Math.min(pic.w, pic.h) : 1;
+  const minZoom = pic ? minZoomOf(pic.w, pic.h) : 0.3;
+  // The slider moves in steps of "times bigger", so each bit of it zooms alike.
+  const lo = Math.log(minZoom);
+  const hi = Math.log(MAX_ZOOM);
   const scale = base * zoom;
   const clamp = (p: Pos, s = scale) => {
     if (!pic) return p;
@@ -469,7 +475,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
   const setZoomKeep = (z: number) => {
     cancelAnimationFrame(anim.current);
     setGliding(false);
-    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+    const next = Math.min(MAX_ZOOM, Math.max(minZoom, z));
     setPos((p) => clamp({ x: (p.x * next) / zoom, y: (p.y * next) / zoom }, base * next));
     setZoom(next);
   };
@@ -664,13 +670,13 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
               <Icon name="zoomOut" size={14} />
               <input
                 type="range"
-                min={MIN_ZOOM}
-                max={MAX_ZOOM}
-                step={0.01}
-                value={zoom}
-                style={{ ["--p" as string]: `${((zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * 100}%` }}
+                min={lo}
+                max={hi}
+                step={0.005}
+                value={Math.log(zoom)}
+                style={{ ["--p" as string]: `${Math.min(100, Math.max(0, ((Math.log(zoom) - lo) / (hi - lo)) * 100))}%` }}
                 aria-label={t("logo.up.zoom")}
-                onChange={(e) => setZoomKeep(Number(e.target.value))}
+                onChange={(e) => setZoomKeep(Math.exp(Number(e.target.value)))}
               />
               <Icon name="zoomIn" size={14} />
               {fitTo && (
