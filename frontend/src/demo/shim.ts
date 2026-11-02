@@ -52,6 +52,8 @@ function answer(answers: Answers, method: string, path: string, lang: string): [
   if (method === "GET") {
     if (path.startsWith("/jobs/")) return [200, job];
     if (path === "/health") return [200, { ok: true, version: "demo" }];
+    // No phone has the Android app's fingerprint login in the demo.
+    if (path === "/devices") return [200, []];
     const found = lookup(answers, lang, path);
     return found === undefined ? [404, { detail: "Not part of the demo." }] : [200, found];
   }

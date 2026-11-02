@@ -90,12 +90,23 @@ def session_days(conn) -> int:
     return int(_setting(conn, "session_days") or SESSION_DAYS)
 
 
-def create_session(conn, user_id: int, *, ip: str | None = None, agent: str | None = None, method: str = "password") -> str:
+def create_session(
+    conn,
+    user_id: int,
+    *,
+    ip: str | None = None,
+    agent: str | None = None,
+    method: str = "password",
+    device_id: int | None = None,
+) -> str:
     token = secrets.token_urlsafe(32)
     now = datetime.now(timezone.utc)
+    if device_id is not None:
+        # A phone has one login at a time: its fingerprint login replaces the one before.
+        conn.execute("DELETE FROM sessions WHERE device_id = ?", (device_id,))
     conn.execute(
-        "INSERT INTO sessions (token_hash, user_id, created_at, expires_at, last_seen, ip, agent, method) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sessions (token_hash, user_id, created_at, expires_at, last_seen, ip, agent, method, device_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             _token_hash(token),
             user_id,
@@ -105,6 +116,7 @@ def create_session(conn, user_id: int, *, ip: str | None = None, agent: str | No
             ip,
             (agent or "")[:300] or None,
             method,
+            device_id,
         ),
     )
     conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now.isoformat(),))

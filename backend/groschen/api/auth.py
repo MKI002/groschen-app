@@ -7,7 +7,7 @@ import time
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from .. import config, db, passkeys, security, settings
+from .. import config, db, devices, passkeys, security, settings
 from .deps import current_user, has_users
 
 router = APIRouter()
@@ -270,6 +270,83 @@ def delete_passkey(passkey_id: int, user=Depends(current_user)):
             settings.put(conn, "password_login", True)
             password_back = True
     return {"ok": True, "password_login": password_back}
+
+
+# --- phones with a fingerprint (the Android app) ----------------------------------------------
+
+
+class DeviceNew(BaseModel):
+    challenge_id: str = Field(max_length=100)
+    public_key: str = Field(max_length=600)
+    signature: str = Field(max_length=300)
+    name: str = Field(default="", max_length=60)
+
+
+class DeviceLogin(BaseModel):
+    key_id: str = Field(max_length=100)
+    challenge_id: str = Field(max_length=100)
+    signature: str = Field(max_length=300)
+
+
+@router.post("/login/device/options")
+def device_login_options(request: Request):
+    ip, _ = _client(request)
+    with db.session() as conn:
+        _check_lock(conn, ip)
+    return devices.challenge(devices.LOGIN)
+
+
+@router.post("/login/device")
+def device_login(body: DeviceLogin, request: Request, response: Response):
+    # A key in the phone's secure hardware that only signs after a fingerprint: this works
+    # whether or not the password login is switched on, like a passkey.
+    ip, agent = _client(request)
+    with db.session() as conn:
+        _check_lock(conn, ip)
+        found = devices.verify_login(conn, body.key_id, body.challenge_id, body.signature)
+        if found is None:
+            security.log_login(conn, username=None, method="device", ok=False, ip=ip, agent=agent)
+        else:
+            user_id, device_id = found
+            username = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()[0]
+            security.log_login(conn, username=username, method="device", ok=True, ip=ip, agent=agent)
+            token = security.create_session(conn, user_id, ip=ip, agent=agent, method="device", device_id=device_id)
+            days = security.session_days(conn)
+    if found is None:
+        _record_failure(ip)
+        time.sleep(1.0)
+        raise HTTPException(status_code=401, detail="The fingerprint login didn't work. Log in with your password.")
+    _clear_failures(ip)
+    _set_cookie(request, response, token, days)
+    return {"ok": True}
+
+
+@router.get("/devices")
+def list_devices(user=Depends(current_user)):
+    with db.session() as conn:
+        return devices.list_for(conn, user["id"])
+
+
+@router.post("/devices/options")
+def device_options(user=Depends(current_user)):
+    return devices.challenge(devices.REGISTER, user["id"])
+
+
+@router.post("/devices")
+def add_device(body: DeviceNew, user=Depends(current_user)):
+    with db.session() as conn:
+        item = devices.register(conn, user["id"], body.challenge_id, body.public_key, body.signature, body.name)
+    if item is None:
+        raise HTTPException(status_code=400, detail="The fingerprint login couldn't be set up. Please try again.")
+    return item
+
+
+@router.delete("/devices/{device_id}")
+def delete_device(device_id: int, user=Depends(current_user)):
+    with db.session() as conn:
+        if not devices.remove(conn, user["id"], device_id):
+            raise HTTPException(status_code=404, detail="Not found.")
+    return {"ok": True}
 
 
 # --- sessions and login history -----------------------------------------------------------------

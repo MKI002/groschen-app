@@ -38,6 +38,8 @@
 - **Depot without the noise.** Real gain and loss without counting the money you paid in,
   zoomable charts, a projection with 800 simulated futures.
 - **Everything in the browser.** Setup wizard, bank connection, backups, passkeys: no config files.
+- **A native Android app.** Overview, transactions, spending and depot on the phone, opened with
+  your fingerprint. [More below](#android-app).
   English and German, with numbers, dates and money written the way your country writes them.
 - **Any country, any currency.** Pick where you live and your home currency on first start. Money
   in other currencies is converted with the European Central Bank's daily reference rates (off
@@ -64,6 +66,7 @@
 - [Banks: what to know](#banks-what-to-know)
 - [Install](#install)
 - [Updates](#updates)
+- [Android app](#android-app)
 - [Try it with demo data](#try-it-with-demo-data)
 - [Development](#development)
 
@@ -251,6 +254,22 @@ model, categorizes sample texts and confirms the network guard blocks the intern
   back, use that tag instead of `latest`.
 - The app never updates itself. Base images, Python packages and GitHub Actions are pinned to
   exact versions and hashes, and change only through a reviewed pull request.
+
+## Android app
+
+A native app for Android 11 and newer (Kotlin and Jetpack Compose, not a web page in a frame)
+shows the Overview, transactions, spending, fixed costs and the depot from your own server, with
+bank sync, hidden amounts and a fingerprint login.
+
+- Install: open the [latest Android release](https://github.com/MKI002/groschen-app/releases?q=android&expanded=true)
+  on your phone and tap the APK. Updates install over it, or let Obtainium watch this repository.
+- Connect: type your server's address, for example `192.168.178.20:8420`. Plain `http://` is
+  accepted only for home network and Tailscale addresses; anything else needs `https://`.
+- Fingerprint: after the first password login, the phone keeps a key in its secure hardware and
+  signs a one-time challenge after your fingerprint. Phones are listed (and removed) under
+  **Settings → Security → Phones with fingerprint** in the web interface.
+
+Details, building it yourself and the signing key for releases: [`android/README.md`](android/README.md).
 
 ## Try it with demo data
 

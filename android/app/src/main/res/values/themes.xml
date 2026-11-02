@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The one dark look of Groschen; everything else is drawn by Compose. -->
+    <style name="Theme.Groschen" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/groschen_bg</item>
+        <item name="android:colorBackground">@color/groschen_bg</item>
+        <item name="android:colorAccent">@color/groschen_accent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <color name="groschen_bg">#FF0A0B0D</color>
+    <color name="groschen_accent">#FFD6B46E</color>
+</resources>

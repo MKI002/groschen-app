@@ -18,5 +18,6 @@ data
 **/.env
 **/.env.*
 .github
+android
 unraid
 README.md
