@@ -31,9 +31,10 @@ def adb(*args: str, check: bool = True) -> str:
 
 def fail(why: str) -> None:
     shot("failed")
-    print(f"::error::{why}")
+    print(adb("logcat", "-d", "-t", "300", check=False)[-12000:])
     print(adb("logcat", "-d", "-b", "crash", check=False)[-6000:])
-    print(adb("logcat", "-d", "-t", "400", check=False)[-12000:])
+    print("On the screen:", " | ".join(t for t in (label(n) for n in nodes()) if t))
+    print(f"::error::{why}")
     sys.exit(1)
 
 
@@ -120,7 +121,7 @@ def settle(page: str, seconds: float = 5) -> None:
     check_health()
     no_trouble(page)
     shot(page)
-    print(f"ok: {page}")
+    print(f"ok: {page}:", " | ".join(t for t in (label(n) for n in nodes()) if t)[:400])
 
 
 def main() -> None:
@@ -140,7 +141,8 @@ def main() -> None:
     type_into(1, PASSWORD)
     tap(lowest(wait_for("Log in")))
 
-    wait_for("Free to spend until payday")
+    # Small headings are shown in capitals.
+    wait_for("FREE TO SPEND UNTIL PAYDAY")
     settle("3-overview")
 
     for number, tab in enumerate(("Transactions", "Spending", "Wealth"), start=4):
@@ -148,7 +150,7 @@ def main() -> None:
         settle(f"{number}-{tab.lower()}")
 
     tap(lowest(wait_for("Overview")))
-    wait_for("Free to spend until payday")
+    wait_for("FREE TO SPEND UNTIL PAYDAY")
     settle("7-overview-again", 2)
 
     # Into the background and back, as when switching apps.
