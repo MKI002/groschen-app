@@ -45,6 +45,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -197,7 +199,9 @@ fun RoundButton(icon: Ico, label: String, onClick: () -> Unit, modifier: Modifie
             .clip(RoundedCornerShape(13.dp))
             .background(Palette.surface)
             .border(1.dp, Palette.line2, RoundedCornerShape(13.dp))
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            // A button with only an icon still has a name for TalkBack.
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         GIcon(icon, size = 20.dp, tint = tint)

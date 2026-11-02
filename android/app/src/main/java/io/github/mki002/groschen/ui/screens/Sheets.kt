@@ -143,6 +143,9 @@ private fun ColumnScope.SettingsSheet(model: AppModel) {
         }
         Spacer(Modifier.height(18.dp))
 
+        UpdateSettings(model)
+        Spacer(Modifier.height(18.dp))
+
         // Another server.
         if (!confirmServer) {
             GButton(s.changeServer, { confirmServer = true }, icon = Ico.Server, modifier = Modifier.fillMaxWidth())
@@ -157,8 +160,6 @@ private fun ColumnScope.SettingsSheet(model: AppModel) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        Text(s.versionLine(model.appVersion), style = G.type.small, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(4.dp))
         Text(s.moreInWeb, style = G.type.small)
     }
 }

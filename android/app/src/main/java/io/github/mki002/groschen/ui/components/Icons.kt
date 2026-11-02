@@ -61,6 +61,7 @@ enum class Ico(internal vararg val parts: Part) {
     ChevDown(s("M6 9l6 6 6-6")),
     Up(s("M12 19V5M5.5 11.5L12 5l6.5 6.5")),
     Down(s("M12 5v14M5.5 12.5L12 19l6.5-6.5")),
+    Download(s("M12 4v11M7 10.5l5 5 5-5M5 20h14")),
     Spark(f("M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z")),
     Warn(s("M12 3l10 18H2z"), s("M12 10v5M12 18h.01")),
     Repeat(s("M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4")),

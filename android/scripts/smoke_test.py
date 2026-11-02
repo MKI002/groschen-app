@@ -31,9 +31,14 @@ def adb(*args: str, check: bool = True) -> str:
 
 def fail(why: str) -> None:
     shot("failed")
-    print(adb("logcat", "-d", "-t", "300", check=False)[-12000:])
+    print(adb("logcat", "-d", "-t", "120", check=False)[-8000:])
+    pid = adb("shell", "pidof", PACKAGE, check=False).strip()
+    if pid:
+        print("What the app logged:")
+        print(adb("logcat", "-d", f"--pid={pid}", check=False)[-8000:])
     print(adb("logcat", "-d", "-b", "crash", check=False)[-6000:])
     print("On the screen:", " | ".join(t for t in (label(n) for n in nodes()) if t))
+    print("On-screen keyboard up:", keyboard_shown())
     print(f"::error::{why}")
     sys.exit(1)
 
@@ -67,17 +72,21 @@ def label(node) -> str:
     return node.get("text") or node.get("content-desc") or ""
 
 
+def bounds(node) -> tuple:
+    return tuple(map(int, re.findall(r"\d+", node.get("bounds"))))
+
+
 def center(node) -> tuple:
-    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    x1, y1, x2, y2 = bounds(node)
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-def wait_for(text: str, timeout: int = 60) -> list:
+def wait_for(text: str, timeout: int = 60, at_least: int = 1) -> list:
     deadline = time.time() + timeout
     while time.time() < deadline:
         check_health()
         found = [n for n in nodes() if label(n) == text]
-        if found:
+        if len(found) >= at_least:
             return found
         time.sleep(1)
     fail(f'"{text}" did not show up within {timeout} seconds.')
@@ -89,9 +98,39 @@ def tap(node) -> None:
     time.sleep(0.8)
 
 
+def scroll_to(text: str, tries: int = 8) -> None:
+    """Swipes up until [text] is on the screen (a long sheet shows only part of itself)."""
+    for _ in range(tries):
+        found = nodes()
+        if any(label(n) == text for n in found):
+            return
+        # Swipe inside the biggest scrolling area, so the swipe can't land on something else.
+        areas = [bounds(n) for n in found if n.get("scrollable") == "true"] or [bounds(n) for n in found[:1]]
+        x1, y1, x2, y2 = max(areas, key=lambda b: (b[2] - b[0]) * (b[3] - b[1])) if areas else (0, 0, 320, 640)
+        x, height = (x1 + x2) // 2, y2 - y1
+        adb("shell", "input", "swipe", str(x), str(y1 + height * 3 // 4), str(x), str(y1 + height // 4), "400")
+        time.sleep(1)
+        check_health()
+    fail(f'"{text}" did not show up after scrolling.')
+
+
 def lowest(found: list):
     """The same text twice (a title and a button): the one further down is the button."""
     return max(found, key=lambda n: center(n)[1])
+
+
+def keyboard_shown() -> bool:
+    return "mInputShown=true" in adb("shell", "dumpsys", "input_method", check=False)
+
+
+def hide_keyboard() -> None:
+    """The on-screen keyboard covers the lower half of the small test screen, and with it the buttons."""
+    for _ in range(3):
+        if not keyboard_shown():
+            return
+        adb("shell", "input", "keyevent", "KEYCODE_BACK")  # with the keyboard up, Back only puts it away
+        time.sleep(1)
+    fail("The on-screen keyboard didn't go away.")
 
 
 def type_into(index: int, text: str) -> None:
@@ -101,12 +140,32 @@ def type_into(index: int, text: str) -> None:
     tap(fields[index])
     adb("shell", "input", "text", text)
     time.sleep(0.5)
+    hide_keyboard()
 
 
 def no_trouble(page: str) -> None:
     for n in nodes():
         if any(t in label(n) for t in TROUBLE):
             fail(f'{page}: the page shows "{label(n)}".')
+
+
+def connect(tries: int = 5) -> None:
+    """Taps Connect until the login shows. Right after the emulator starts, its network can need a moment."""
+    for attempt in range(1, tries + 1):
+        tap(lowest(wait_for("Connect")))
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            check_health()
+            texts = [label(n) for n in nodes()]
+            if texts.count("Log in") >= 2:  # the heading and the button
+                return
+            if any("can't be reached" in t for t in texts):
+                break
+            time.sleep(1)
+        print(f"Try {attempt}: the app couldn't reach the demo server yet.")
+        print(adb("shell", "ping", "-c", "1", "-W", "2", SERVER.split(":")[0], check=False).strip())
+        time.sleep(5)
+    fail(f"The app couldn't reach the demo server in {tries} tries.")
 
 
 def shot(name: str) -> None:
@@ -133,13 +192,11 @@ def main() -> None:
     wait_for("Connect to your Groschen")
     shot("1-connect")
     type_into(0, SERVER)
-    tap(lowest(wait_for("Connect")))
-
-    wait_for("Log in")
+    connect()
     shot("2-login")
     type_into(0, USER)
     type_into(1, PASSWORD)
-    tap(lowest(wait_for("Log in")))
+    tap(lowest(wait_for("Log in", at_least=2)))  # the heading and the button
 
     # Small headings are shown in capitals.
     wait_for("FREE TO SPEND UNTIL PAYDAY")
@@ -153,11 +210,19 @@ def main() -> None:
     wait_for("FREE TO SPEND UNTIL PAYDAY")
     settle("7-overview-again", 2)
 
+    # The settings, with the update section (a test build doesn't look for updates).
+    tap(lowest(wait_for("Settings")))
+    time.sleep(2)
+    scroll_to("A build of your own doesn't look for updates.")
+    settle("8-settings", 2)
+    adb("shell", "input", "keyevent", "KEYCODE_BACK")
+    wait_for("FREE TO SPEND UNTIL PAYDAY")
+
     # Into the background and back, as when switching apps.
     adb("shell", "input", "keyevent", "KEYCODE_HOME")
     time.sleep(2)
     adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
-    settle("8-back-from-background", 3)
+    settle("9-back-from-background", 3)
     print("The app logged in and opened every page without trouble.")
 
 
