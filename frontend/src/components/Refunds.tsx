@@ -5,8 +5,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { catName, t, useT, type Key } from "../i18n";
 import { qs } from "../lib/api";
-import { colorVar, dateShort, dayMonth, eur, initial } from "../lib/format";
+import { colorVar, dateShort, dayMonth, eur } from "../lib/format";
 import type { RefundCandidate, RefundInfo, Tx, TxBrief } from "../lib/types";
+import { MerchantAv } from "./Logo";
 import { Icon } from "./Icons";
 import { Spinner, useApi } from "./UI";
 
@@ -97,9 +98,7 @@ export function MoneyBackFor({ tx, info, busy, onUnlink, onPick }: { tx: Tx; inf
         <b>{t("rf.backFor")}</b>
       </div>
       <div className="rf-pay" style={vars({ "--c": colorVar(tx.category_color) })}>
-        <span className="txl-av" aria-hidden="true">
-          {initial(p.merchant)}
-        </span>
+        <MerchantAv name={p.merchant} />
         <span className="rf-pay-main">
           <b>{p.merchant}</b>
           <small>{dateShort(p.date)}</small>
@@ -166,9 +165,7 @@ export function PaymentPicker({ tx, busy, onPick }: { tx: Tx; busy: number | nul
       <div className="rf-cands">
         {data?.items.map((c, i) => (
           <button key={c.id} type="button" className="rf-cand" style={vars({ "--c": colorVar(c.category_color), "--i": Math.min(i, 12) })} disabled={busy !== null} onClick={() => onPick(c)}>
-            <span className="txl-av" aria-hidden="true">
-              {initial(c.merchant)}
-            </span>
+            <MerchantAv name={c.merchant} />
             <span className="rf-cand-main">
               <b>{c.merchant}</b>
               <small>

@@ -85,6 +85,10 @@ DE = {
     "The current password isn't right.": "Das aktuelle Passwort stimmt nicht.",
     "Missing request header.": "Anfrage-Header fehlt.",
     "Not found.": "Nicht gefunden.",
+    "Unknown merchant.": "Unbekannter Händler.",
+    "Unknown logo.": "Unbekanntes Logo.",
+    "That picture is too large.": "Das Bild ist zu groß.",
+    "Use a PNG, JPEG, WebP or GIF picture.": "Nimm ein PNG-, JPEG-, WebP- oder GIF-Bild.",
     # lookups
     "Unknown job.": "Unbekannter Vorgang.",
     "Unknown connection.": "Unbekannte Verbindung.",
