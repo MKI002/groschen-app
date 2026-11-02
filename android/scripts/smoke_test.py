@@ -34,6 +34,7 @@ def fail(why: str) -> None:
     print(adb("logcat", "-d", "-t", "300", check=False)[-12000:])
     print(adb("logcat", "-d", "-b", "crash", check=False)[-6000:])
     print("On the screen:", " | ".join(t for t in (label(n) for n in nodes()) if t))
+    print("On-screen keyboard up:", keyboard_shown())
     print(f"::error::{why}")
     sys.exit(1)
 
@@ -67,17 +68,21 @@ def label(node) -> str:
     return node.get("text") or node.get("content-desc") or ""
 
 
+def bounds(node) -> tuple:
+    return tuple(map(int, re.findall(r"\d+", node.get("bounds"))))
+
+
 def center(node) -> tuple:
-    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    x1, y1, x2, y2 = bounds(node)
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-def wait_for(text: str, timeout: int = 60) -> list:
+def wait_for(text: str, timeout: int = 60, at_least: int = 1) -> list:
     deadline = time.time() + timeout
     while time.time() < deadline:
         check_health()
         found = [n for n in nodes() if label(n) == text]
-        if found:
+        if len(found) >= at_least:
             return found
         time.sleep(1)
     fail(f'"{text}" did not show up within {timeout} seconds.')
@@ -95,7 +100,9 @@ def scroll_to(text: str, tries: int = 8) -> None:
         found = nodes()
         if any(label(n) == text for n in found):
             return
-        x1, y1, x2, y2 = map(int, re.findall(r"\d+", found[0].get("bounds"))) if found else (0, 0, 320, 640)
+        # Swipe inside the biggest scrolling area, so the swipe can't land on something else.
+        areas = [bounds(n) for n in found if n.get("scrollable") == "true"] or [bounds(n) for n in found[:1]]
+        x1, y1, x2, y2 = max(areas, key=lambda b: (b[2] - b[0]) * (b[3] - b[1])) if areas else (0, 0, 320, 640)
         x, height = (x1 + x2) // 2, y2 - y1
         adb("shell", "input", "swipe", str(x), str(y1 + height * 3 // 4), str(x), str(y1 + height // 4), "400")
         time.sleep(1)
@@ -108,6 +115,20 @@ def lowest(found: list):
     return max(found, key=lambda n: center(n)[1])
 
 
+def keyboard_shown() -> bool:
+    return "mInputShown=true" in adb("shell", "dumpsys", "input_method", check=False)
+
+
+def hide_keyboard() -> None:
+    """The on-screen keyboard covers the lower half of the small test screen, and with it the buttons."""
+    for _ in range(3):
+        if not keyboard_shown():
+            return
+        adb("shell", "input", "keyevent", "KEYCODE_BACK")  # with the keyboard up, Back only puts it away
+        time.sleep(1)
+    fail("The on-screen keyboard didn't go away.")
+
+
 def type_into(index: int, text: str) -> None:
     fields = [n for n in nodes() if n.get("class") == "android.widget.EditText"]
     if len(fields) <= index:
@@ -115,6 +136,7 @@ def type_into(index: int, text: str) -> None:
     tap(fields[index])
     adb("shell", "input", "text", text)
     time.sleep(0.5)
+    hide_keyboard()
 
 
 def no_trouble(page: str) -> None:
@@ -153,7 +175,7 @@ def main() -> None:
     shot("2-login")
     type_into(0, USER)
     type_into(1, PASSWORD)
-    tap(lowest(wait_for("Log in")))
+    tap(lowest(wait_for("Log in", at_least=2)))  # the heading and the button
 
     # Small headings are shown in capitals.
     wait_for("FREE TO SPEND UNTIL PAYDAY")
