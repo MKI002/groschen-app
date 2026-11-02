@@ -1,14 +1,21 @@
 package io.github.mki002.groschen.platform
 
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInfo
+import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricManager.Authenticators
 import android.hardware.biometrics.BiometricPrompt
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.CancellationSignal
+import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
@@ -19,6 +26,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import io.github.mki002.groschen.BuildConfig
+import io.github.mki002.groschen.model.ApkCheck
 import io.github.mki002.groschen.model.Biometrics
 import io.github.mki002.groschen.model.Platform
 import io.github.mki002.groschen.model.PromptText
@@ -27,9 +35,11 @@ import io.github.mki002.groschen.model.StoredSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.security.GeneralSecurityException
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.UnrecoverableKeyException
@@ -69,6 +79,8 @@ class AndroidPlatform(private val app: Context) : Platform {
         hideAmounts = prefs.getBoolean(HIDE, false),
         lockAfterSeconds = prefs.getInt(LOCK_AFTER, 60),
         fingerprintOffered = prefs.getBoolean(OFFERED, false),
+        updateCheck = prefs.getBoolean(UPDATE_CHECK, true),
+        lastUpdateCheck = prefs.getLong(LAST_UPDATE_CHECK, 0),
     )
 
     override fun saveSettings(settings: StoredSettings) = prefs.edit {
@@ -81,6 +93,8 @@ class AndroidPlatform(private val app: Context) : Platform {
         putBoolean(HIDE, settings.hideAmounts)
         putInt(LOCK_AFTER, settings.lockAfterSeconds)
         putBoolean(OFFERED, settings.fingerprintOffered)
+        putBoolean(UPDATE_CHECK, settings.updateCheck)
+        putLong(LAST_UPDATE_CHECK, settings.lastUpdateCheck)
     }
 
     // --- the login session, encrypted ---------------------------------------------------------
@@ -247,6 +261,106 @@ class AndroidPlatform(private val app: Context) : Platform {
     override fun decodeImage(bytes: ByteArray): ImageBitmap? =
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
 
+    // --- updates from GitHub Releases ---------------------------------------------------------
+
+    override val versionCode: Int
+        get() = BuildConfig.VERSION_CODE
+
+    override val updatesPossible: Boolean
+        get() = !BuildConfig.DEBUG && BuildConfig.VERSION_NAME != "dev"
+
+    override val updateRepo: String
+        get() = BuildConfig.UPDATE_REPO
+
+    private val updateDir: File
+        get() = File(app.cacheDir, "updates")
+
+    override fun updateFile(versionCode: Int) = File(updateDir, "groschen-$versionCode.apk")
+
+    override fun dropOldUpdates() {
+        updateDir.listFiles()?.forEach { f ->
+            val code = f.name.removePrefix("groschen-").substringBefore('.').toIntOrNull()
+            if (code == null || code <= versionCode || !f.name.endsWith(".apk")) f.delete()
+        }
+    }
+
+    override fun onUnmeteredNetwork(): Boolean {
+        val manager = app.getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
+        return network.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }
+
+    override fun checkApk(file: File, versionCode: Int): ApkCheck {
+        val pm = app.packageManager
+        val update = runCatching { pm.archiveInfo(file) }.getOrNull() ?: return ApkCheck.UNREADABLE
+        if (update.packageName != app.packageName) return ApkCheck.NOT_OURS
+        if (update.longVersionCode != versionCode.toLong() || versionCode <= this.versionCode) return ApkCheck.NOT_NEWER
+        val installed = runCatching { pm.ownInfo(app.packageName) }.getOrNull() ?: return ApkCheck.UNREADABLE
+        val theirs = update.signers() ?: return ApkCheck.UNREADABLE
+        val ours = installed.signers() ?: return ApkCheck.UNREADABLE
+        return if (theirs.isNotEmpty() && theirs == ours) ApkCheck.OK else ApkCheck.NOT_OURS
+    }
+
+    private fun PackageManager.archiveInfo(file: File): PackageInfo? =
+        if (Build.VERSION.SDK_INT >= 33) {
+            getPackageArchiveInfo(file.path, PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()))
+        } else {
+            @Suppress("DEPRECATION")
+            getPackageArchiveInfo(file.path, PackageManager.GET_SIGNING_CERTIFICATES)
+        }
+
+    private fun PackageManager.ownInfo(name: String): PackageInfo =
+        if (Build.VERSION.SDK_INT >= 33) {
+            getPackageInfo(name, PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()))
+        } else {
+            @Suppress("DEPRECATION")
+            getPackageInfo(name, PackageManager.GET_SIGNING_CERTIFICATES)
+        }
+
+    // The fingerprints of the certificates the APK is signed with.
+    private fun PackageInfo.signers(): Set<String>? {
+        val info = signingInfo ?: return null
+        val certificates = if (info.hasMultipleSigners()) info.apkContentsSigners else info.signingCertificateHistory
+        return certificates?.map { cert ->
+            MessageDigest.getInstance("SHA-256").digest(cert.toByteArray()).joinToString("") { "%02x".format(it) }
+        }?.toSet()
+    }
+
+    override fun mayInstallApps(): Boolean = app.packageManager.canRequestPackageInstalls()
+
+    override fun askToInstallApps() {
+        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, "package:${app.packageName}".toUri())
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { (activity ?: app).startActivity(intent) }
+    }
+
+    override fun install(file: File) {
+        val installer = app.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+            setAppPackageName(app.packageName)
+            setSize(file.length())
+            // Android 12 and newer let an app update itself without asking every time.
+            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+            if (Build.VERSION.SDK_INT >= 33) setPackageSource(PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE)
+        }
+        val id = installer.createSession(params)
+        try {
+            installer.openSession(id).use { session ->
+                session.openWrite("groschen.apk", 0, file.length()).use { out ->
+                    file.inputStream().use { it.copyTo(out) }
+                    session.fsync(out)
+                }
+                // Android fills in the outcome, so the intent must stay changeable; it only goes to our receiver.
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+                val result = PendingIntent.getBroadcast(app, id, Intent(app, UpdateReceiver::class.java), flags)
+                session.commit(result.intentSender)
+            }
+        } catch (e: Exception) {
+            runCatching { installer.abandonSession(id) }
+            throw e
+        }
+    }
+
     private companion object {
         const val KEYSTORE = "AndroidKeyStore"
         const val DEVICE_KEY = "groschen-device-login"
@@ -264,6 +378,8 @@ class AndroidPlatform(private val app: Context) : Platform {
         const val HIDE = "hide_amounts"
         const val LOCK_AFTER = "lock_after_seconds"
         const val OFFERED = "fingerprint_offered"
+        const val UPDATE_CHECK = "update_check"
+        const val LAST_UPDATE_CHECK = "last_update_check"
         const val SESSION = "session"
     }
 }
