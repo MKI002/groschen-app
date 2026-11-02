@@ -8,6 +8,7 @@ const STAGE = 240; // px, the round cutout fills the square stage
 const OUT = 256; // px of the saved picture
 const MAX_ZOOM = 5;
 const MAX_FILE = 25 * 1024 * 1024;
+const MAX_SIDE = 2048; // px, larger pictures are scaled down before cropping
 
 type Picked = { url: string; w: number; h: number };
 
@@ -138,22 +139,29 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
   const drag = useRef<{ id: number; x: number; y: number; px: number; py: number } | null>(null);
   const depth = useRef(0);
 
-  function open(src: Blob) {
+  // The picture is decoded and drawn onto a canvas first, and only those pixels are shown and
+  // saved: whatever came in (a file, a paste, a drop from another site) never reaches the page
+  // itself. Very large pictures are scaled down on the way.
+  async function open(src: Blob) {
     setNote(null);
     if (src.size > MAX_FILE) return setNote(t("logo.up.tooBig"));
     if (!/^image\/(png|jpe?g|webp|gif)$/.test(src.type)) return setNote(t("logo.up.unreadable"));
-    const url = URL.createObjectURL(src);
-    const img = new Image();
-    img.onload = () => {
-      setPic({ url, w: img.naturalWidth, h: img.naturalHeight });
+    try {
+      const bitmap = await createImageBitmap(src);
+      const k = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * k));
+      canvas.height = Math.max(1, Math.round(bitmap.height * k));
+      canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      const clean = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, "image/png"));
+      if (!clean) throw new Error("png");
+      setPic({ url: URL.createObjectURL(clean), w: canvas.width, h: canvas.height });
       setZoom(1);
       setPos({ x: 0, y: 0 });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
+    } catch {
       setNote(t("logo.up.unreadable"));
-    };
-    img.src = url;
+    }
   }
 
   // Ctrl+V anywhere while the dialog is open.
@@ -162,7 +170,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
       const blob = fromClipboard(e);
       if (blob) {
         e.preventDefault();
-        open(blob);
+        void open(blob);
       } else if (e.clipboardData?.getData("text/plain")) {
         setNote(t("logo.up.linkOnly"));
         setNudge((n) => n + 1);
@@ -230,7 +238,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
     depth.current = 0;
     setOver(false);
     const got = fromDrop(e.dataTransfer);
-    if (got.file) open(got.file);
+    if (got.file) void open(got.file);
     else if (got.linkOnly) {
       setNote(t("logo.up.linkOnly"));
       setNudge((n) => n + 1);
@@ -355,7 +363,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
         onChange={(e) => {
           const f = e.target.files?.[0];
           e.target.value = "";
-          if (f) open(f);
+          if (f) void open(f);
         }}
       />
       {note && <p className="lup-note">{note}</p>}
