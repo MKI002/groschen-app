@@ -227,6 +227,29 @@ interface Strings : GroschenApi.ApiTexts {
     val cancel: String
     fun versionLine(version: String): String
     val moreInWeb: String
+
+    // Updates from GitHub
+    val updates: String
+    val updateCheck: String
+    val updateCheckSub: String
+    val updatesOwnBuild: String
+    val checkNow: String
+    val updateChecking: String
+    val upToDate: String
+    fun updateFound(version: String): String
+    val updateOnMobileData: String
+    val updateDownloading: String
+    val updateReady: String
+    val updateInstalling: String
+    val updateDownload: String
+    val updateInstall: String
+    val onGitHub: String
+    val updateAllowInstalls: String
+    val updateOffline: String
+    val updateBlocked: String
+    val updateBroken: String
+    val updateNotOurs: String
+    val updateNotInstalled: String
     val bankSync: String
     val bankSyncText: String
     val noBankYet: String
@@ -502,6 +525,29 @@ object De : Strings {
     override val cancel = "Abbrechen"
     override fun versionLine(version: String) = "Groschen für Android $version"
     override val moreInWeb = "Alles Weitere stellst du in der Weboberfläche ein."
+
+    override val updates = "Updates"
+    override val updateCheck = "Nach neuen Versionen suchen"
+    override val updateCheckSub = "Einmal am Tag auf GitHub. GitHub sieht dabei nur die IP-Adresse deines Handys."
+    override val updatesOwnBuild = "Eine selbst gebaute App sucht nicht nach Updates."
+    override val checkNow = "Jetzt prüfen"
+    override val updateChecking = "Sucht nach einer neuen Version …"
+    override val upToDate = "Du hast die neueste Version."
+    override fun updateFound(version: String) = "Groschen $version ist da"
+    override val updateOnMobileData = "Im WLAN lädt sie von selbst. Oder jetzt herunterladen."
+    override val updateDownloading = "Wird heruntergeladen …"
+    override val updateReady = "Geprüft und bereit. Die App startet danach neu."
+    override val updateInstalling = "Android installiert die neue Version …"
+    override val updateDownload = "Herunterladen"
+    override val updateInstall = "Installieren"
+    override val onGitHub = "Auf GitHub ansehen"
+    override val updateAllowInstalls =
+        "Erlaube Groschen einmal, Apps zu installieren. Danach geht es von selbst weiter."
+    override val updateOffline = "GitHub ist gerade nicht erreichbar."
+    override val updateBlocked = "Das Update sollte von einer fremden Adresse kommen und wurde nicht geladen."
+    override val updateBroken = "Das Update ließ sich nicht prüfen. Versuch es später noch einmal."
+    override val updateNotOurs = "Die Datei trägt nicht die Signatur dieser App und wurde gelöscht."
+    override val updateNotInstalled = "Android hat das Update nicht installiert."
     override val bankSync = "Bankabruf"
     override val bankSyncText = "Groschen holt neue Umsätze jeden Tag von selbst. Hier geht es sofort."
     override val noBankYet = "Noch keine Bank verbunden. Das richtest du in der Weboberfläche ein."
@@ -772,6 +818,28 @@ object En : Strings {
     override val cancel = "Cancel"
     override fun versionLine(version: String) = "Groschen for Android $version"
     override val moreInWeb = "Everything else is set in the web interface."
+
+    override val updates = "Updates"
+    override val updateCheck = "Look for new versions"
+    override val updateCheckSub = "Once a day on GitHub. GitHub only sees your phone's IP address."
+    override val updatesOwnBuild = "A build of your own doesn't look for updates."
+    override val checkNow = "Check now"
+    override val updateChecking = "Looking for a new version …"
+    override val upToDate = "You have the newest version."
+    override fun updateFound(version: String) = "Groschen $version is here"
+    override val updateOnMobileData = "It downloads by itself on Wi-Fi. Or download it now."
+    override val updateDownloading = "Downloading …"
+    override val updateReady = "Checked and ready. The app starts again afterwards."
+    override val updateInstalling = "Android is installing the new version …"
+    override val updateDownload = "Download"
+    override val updateInstall = "Install"
+    override val onGitHub = "See on GitHub"
+    override val updateAllowInstalls = "Allow Groschen to install apps once. It then carries on by itself."
+    override val updateOffline = "GitHub can't be reached right now."
+    override val updateBlocked = "The update was to come from an unknown address and wasn't downloaded."
+    override val updateBroken = "The update couldn't be checked. Please try again later."
+    override val updateNotOurs = "The file doesn't carry this app's signature and was deleted."
+    override val updateNotInstalled = "Android didn't install the update."
     override val bankSync = "Bank sync"
     override val bankSyncText = "Groschen fetches new bookings every day on its own. Here it happens right away."
     override val noBankYet = "No bank connected yet. You set that up in the web interface."

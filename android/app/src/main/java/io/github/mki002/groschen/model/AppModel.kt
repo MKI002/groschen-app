@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.mki002.groschen.data.Alert
 import io.github.mki002.groschen.data.ApiException
+import io.github.mki002.groschen.data.AppRelease
 import io.github.mki002.groschen.data.Available
 import io.github.mki002.groschen.data.Badges
 import io.github.mki002.groschen.data.Cashflow
@@ -20,16 +21,20 @@ import io.github.mki002.groschen.data.NetWorth
 import io.github.mki002.groschen.data.ServerAddress
 import io.github.mki002.groschen.data.Status
 import io.github.mki002.groschen.data.Transaction
+import io.github.mki002.groschen.data.UpdateChecker
+import io.github.mki002.groschen.data.UpdateException
 import io.github.mki002.groschen.i18n.Fmt
 import io.github.mki002.groschen.i18n.Lang
 import io.github.mki002.groschen.i18n.Strings
 import io.github.mki002.groschen.i18n.strings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.util.Base64
 import kotlinx.coroutines.Job as Task
@@ -71,6 +76,23 @@ class Loadable<T> {
 }
 
 data class Toast(val text: String, val id: Long = System.nanoTime())
+
+/** Where a new app version from GitHub stands. */
+sealed interface AppUpdate {
+    /** Nothing new known. */
+    data object None : AppUpdate
+    data object Checking : AppUpdate
+
+    /** Asked for, and this is the newest version already. */
+    data object UpToDate : AppUpdate
+
+    /** On mobile data: found, but downloaded only when asked. */
+    data class Found(val release: AppRelease) : AppUpdate
+    data class Downloading(val release: AppRelease, val progress: Float) : AppUpdate
+    data class Ready(val release: AppRelease) : AppUpdate
+    data class Installing(val release: AppRelease) : AppUpdate
+    data class Failed(val message: String, val release: AppRelease? = null) : AppUpdate
+}
 
 data class OverviewData(
     val available: Available,
@@ -132,6 +154,7 @@ class AppModel(
     // --- start, connect, log in ---------------------------------------------------------------
 
     fun start() {
+        runCatching { platform.dropOldUpdates() }
         val server = settings.server
         if (server == null) {
             stage = Stage.Connect
@@ -308,6 +331,7 @@ class AppModel(
     private fun enterMain() {
         stage = Stage.Main
         refreshAll()
+        autoCheckForUpdate()
     }
 
     // --- fingerprint --------------------------------------------------------------------------
@@ -399,9 +423,15 @@ class AppModel(
     }
 
     fun onForeground() {
+        // Back from Android's setting that lets Groschen install apps: carry on with the update.
+        if (installAfterPermission && platform.mayInstallApps()) {
+            installAfterPermission = false
+            installUpdate()
+        }
         val since = backgroundSince ?: return
         backgroundSince = null
         if (stage == Stage.Main && fingerprintOn && clock() - since >= settings.lockAfterSeconds * 1000L) lock()
+        if (stage == Stage.Main) autoCheckForUpdate()
     }
 
     fun lock() {
@@ -433,7 +463,15 @@ class AppModel(
             }
             platform.dropDeviceKey()
             platform.saveSession(null)
-            update { StoredSettings(language = language, hideAmounts = hideAmounts, lockAfterSeconds = lockAfterSeconds) }
+            update {
+                StoredSettings(
+                    language = language,
+                    hideAmounts = hideAmounts,
+                    lockAfterSeconds = lockAfterSeconds,
+                    updateCheck = updateCheck,
+                    lastUpdateCheck = lastUpdateCheck,
+                )
+            }
             this@AppModel.api = null
             status = null
             sheets.clear()
@@ -453,6 +491,142 @@ class AppModel(
             notice = s.sessionEnded
             stage = if (fingerprintOn) Stage.Locked else Stage.Login
         }
+    }
+
+    // --- updates from GitHub -------------------------------------------------------------------
+
+    var appUpdate by mutableStateOf<AppUpdate>(AppUpdate.None)
+        private set
+    val updatesPossible: Boolean get() = platform.updatesPossible
+    private val updates by lazy { UpdateChecker(platform.updateRepo, platform.userAgent) }
+    private var updateTask: Task? = null
+    private var installAfterPermission = false
+
+    /** Once a day, when the app is opened: is there a newer version on GitHub? */
+    private fun autoCheckForUpdate() {
+        if (!platform.updatesPossible || !settings.updateCheck) return
+        if (clock() - settings.lastUpdateCheck < UPDATE_EVERY_MS) return
+        checkForUpdate(asked = false)
+    }
+
+    /** Looks for a newer version; on Wi-Fi, or when [asked], it downloads right away. */
+    fun checkForUpdate(asked: Boolean = true) {
+        if (!platform.updatesPossible || updateTask?.isActive == true) return
+        if (appUpdate is AppUpdate.Ready || appUpdate is AppUpdate.Installing) return
+        updateTask = scope.launch {
+            if (asked) appUpdate = AppUpdate.Checking
+            try {
+                val release = updates.latest(platform.versionCode)
+                update { copy(lastUpdateCheck = clock()) }
+                when {
+                    release == null -> appUpdate = if (asked) AppUpdate.UpToDate else AppUpdate.None
+                    asked || platform.onUnmeteredNetwork() -> fetchUpdate(release)
+                    else -> appUpdate = AppUpdate.Found(release)
+                }
+            } catch (e: UpdateException) {
+                // A check by itself stays quiet; it simply tries again tomorrow.
+                appUpdate = if (asked) AppUpdate.Failed(updateMessage(e)) else AppUpdate.None
+            }
+        }
+    }
+
+    /** Downloads the version that was found on mobile data. */
+    fun downloadUpdate() {
+        val release = when (val u = appUpdate) {
+            is AppUpdate.Found -> u.release
+            is AppUpdate.Failed -> u.release
+            else -> null
+        } ?: return checkForUpdate()
+        if (updateTask?.isActive == true) return
+        updateTask = scope.launch {
+            try {
+                fetchUpdate(release)
+            } catch (e: UpdateException) {
+                appUpdate = AppUpdate.Failed(updateMessage(e), release)
+            }
+        }
+    }
+
+    private suspend fun fetchUpdate(release: AppRelease) {
+        val file = platform.updateFile(release.versionCode)
+        if (!file.exists()) {
+            appUpdate = AppUpdate.Downloading(release, 0f)
+            var shown = 0
+            updates.download(release, file) { p ->
+                val percent = (p * 100).toInt()
+                if (percent != shown) {
+                    shown = percent
+                    scope.launch { if (appUpdate is AppUpdate.Downloading) appUpdate = AppUpdate.Downloading(release, p) }
+                }
+            }
+        }
+        appUpdate = when (withContext(Dispatchers.IO) { platform.checkApk(file, release.versionCode) }) {
+            ApkCheck.OK -> AppUpdate.Ready(release)
+            ApkCheck.NOT_OURS -> {
+                file.delete()
+                AppUpdate.Failed(s.updateNotOurs)
+            }
+            ApkCheck.NOT_NEWER, ApkCheck.UNREADABLE -> {
+                file.delete()
+                AppUpdate.Failed(s.updateBroken)
+            }
+        }
+    }
+
+    /** Hands the downloaded version to Android; the app closes while Android replaces it. */
+    fun installUpdate() {
+        val release = (appUpdate as? AppUpdate.Ready)?.release ?: return
+        if (!platform.mayInstallApps()) {
+            installAfterPermission = true
+            show(s.updateAllowInstalls)
+            platform.askToInstallApps()
+            return
+        }
+        appUpdate = AppUpdate.Installing(release)
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) { platform.install(platform.updateFile(release.versionCode)) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                appUpdate = AppUpdate.Failed(s.updateNotInstalled, release)
+            }
+        }
+    }
+
+    /** What Android's installer said. On success the new version is already starting. */
+    fun installResult(success: Boolean, cancelled: Boolean) {
+        scope.launch {
+            val release = (appUpdate as? AppUpdate.Installing)?.release ?: return@launch
+            appUpdate = when {
+                success -> AppUpdate.None
+                cancelled -> AppUpdate.Ready(release)
+                else -> AppUpdate.Failed(s.updateNotInstalled, release)
+            }
+        }
+    }
+
+    fun setUpdateCheck(on: Boolean) {
+        update { copy(updateCheck = on) }
+        if (on) checkForUpdate(asked = false) else if (appUpdate !is AppUpdate.Installing) appUpdate = AppUpdate.None
+    }
+
+    fun openReleasePage() {
+        val page = when (val u = appUpdate) {
+            is AppUpdate.Found -> u.release.page
+            is AppUpdate.Downloading -> u.release.page
+            is AppUpdate.Ready -> u.release.page
+            is AppUpdate.Installing -> u.release.page
+            is AppUpdate.Failed -> u.release?.page
+            else -> null
+        }
+        platform.openInBrowser(page?.takeIf { it.startsWith("https://") } ?: "https://github.com/${platform.updateRepo}/releases")
+    }
+
+    private fun updateMessage(e: UpdateException) = when (e.reason) {
+        UpdateException.Reason.OFFLINE -> s.updateOffline
+        UpdateException.Reason.BLOCKED -> s.updateBlocked
+        UpdateException.Reason.BROKEN -> s.updateBroken
     }
 
     // --- small things -------------------------------------------------------------------------
@@ -839,5 +1013,8 @@ class AppModel(
         val REGISTER_LABEL = "groschen-device-register:".toByteArray()
 
         val LOCK_CHOICES = listOf(0, 60, 300, 900)
+
+        /** How often GitHub is asked for a new version by itself. */
+        const val UPDATE_EVERY_MS = 20 * 60 * 60 * 1000L
     }
 }

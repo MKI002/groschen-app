@@ -89,6 +89,20 @@ def tap(node) -> None:
     time.sleep(0.8)
 
 
+def scroll_to(text: str, tries: int = 8) -> None:
+    """Swipes up until [text] is on the screen (a long sheet shows only part of itself)."""
+    for _ in range(tries):
+        found = nodes()
+        if any(label(n) == text for n in found):
+            return
+        x1, y1, x2, y2 = map(int, re.findall(r"\d+", found[0].get("bounds"))) if found else (0, 0, 320, 640)
+        x, height = (x1 + x2) // 2, y2 - y1
+        adb("shell", "input", "swipe", str(x), str(y1 + height * 3 // 4), str(x), str(y1 + height // 4), "400")
+        time.sleep(1)
+        check_health()
+    fail(f'"{text}" did not show up after scrolling.')
+
+
 def lowest(found: list):
     """The same text twice (a title and a button): the one further down is the button."""
     return max(found, key=lambda n: center(n)[1])
@@ -153,11 +167,19 @@ def main() -> None:
     wait_for("FREE TO SPEND UNTIL PAYDAY")
     settle("7-overview-again", 2)
 
+    # The settings, with the update section (a test build doesn't look for updates).
+    tap(lowest(wait_for("Settings")))
+    time.sleep(2)
+    scroll_to("A build of your own doesn't look for updates.")
+    settle("8-settings", 2)
+    adb("shell", "input", "keyevent", "KEYCODE_BACK")
+    wait_for("FREE TO SPEND UNTIL PAYDAY")
+
     # Into the background and back, as when switching apps.
     adb("shell", "input", "keyevent", "KEYCODE_HOME")
     time.sleep(2)
     adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
-    settle("8-back-from-background", 3)
+    settle("9-back-from-background", 3)
     print("The app logged in and opened every page without trouble.")
 
 

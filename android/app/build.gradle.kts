@@ -10,6 +10,10 @@ plugins {
 val buildNumber = providers.environmentVariable("GROSCHEN_BUILD_NUMBER").orNull?.toIntOrNull() ?: 1
 val buildName = providers.environmentVariable("GROSCHEN_VERSION_NAME").orNull ?: "dev"
 
+// The repository whose GitHub Releases the app looks at for updates: the one it was built in.
+val updateRepo = providers.environmentVariable("GITHUB_REPOSITORY").orNull
+    ?.takeIf { Regex("""[\w.-]+/[\w.-]+""").matches(it) } ?: "MKI002/groschen-app"
+
 // The signing key never lives in the repository: GitHub writes it from a secret into a file
 // for the release build and deletes it afterwards (see .github/workflows/android.yml).
 val keystoreFile = providers.environmentVariable("GROSCHEN_KEYSTORE").orNull?.let(::file)
@@ -26,6 +30,7 @@ android {
         targetSdk = 36
         versionCode = buildNumber
         versionName = buildName
+        buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
     }
 
     signingConfigs {
