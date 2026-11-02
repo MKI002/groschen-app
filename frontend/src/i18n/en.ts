@@ -332,6 +332,7 @@ export const en = {
   "logo.up.pasteSub": "a copied image",
   "logo.up.release": "Let go to use this picture",
   "logo.up.linkOnly": "That site won't hand its pictures to other pages. Right-click the picture, “Copy image”, then Ctrl+V here.",
+  "logo.up.linkFrom": "This full-size picture comes from {host}, which doesn't share its pictures with other pages. Drag the small preview from Google's results instead (it's sharp enough for a logo), or right-click the picture, “Copy image”, then Ctrl+V.",
   "logo.up.unreadable": "That doesn't look like a picture. Try a PNG, JPEG, WebP or GIF.",
   "logo.up.tooBig": "That picture is larger than 25 MB.",
   "logo.up.moveHint": "Drag to move, scroll or use the slider to zoom.",

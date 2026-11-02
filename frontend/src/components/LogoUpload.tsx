@@ -63,7 +63,22 @@ function browserLink(text: string): string | null {
   return `https://${u.hostname}${u.pathname}${u.search}`;
 }
 
-function fromDrop(dt: DataTransfer): { file?: Blob; link?: string; linkOnly?: boolean } {
+/** The site a dropped link points to, for the hint (a Google result link names the site it shows). */
+function siteOf(texts: string[]): string | null {
+  for (const text of texts) {
+    try {
+      const u = new URL(text.trim());
+      const inner = /(^|\.)google\.[a-z.]+$/.test(u.hostname) ? u.searchParams.get("imgurl") : null;
+      const host = inner ? new URL(inner).hostname : u.hostname;
+      if (/^https?:$/.test(u.protocol) && host) return host.replace(/^www\./, "").slice(0, 60);
+    } catch {
+      /* not a link */
+    }
+  }
+  return null;
+}
+
+function fromDrop(dt: DataTransfer): { file?: Blob; link?: string; linkOnly?: boolean; site?: string | null } {
   const file = Array.from(dt.files).find((f) => f.type.startsWith("image/"));
   if (file) return { file };
   for (const item of Array.from(dt.items ?? [])) {
@@ -83,7 +98,7 @@ function fromDrop(dt: DataTransfer): { file?: Blob; link?: string; linkOnly?: bo
     const link = browserLink(text);
     if (link) return { link };
   }
-  return texts.length ? { linkOnly: true } : {};
+  return texts.length ? { linkOnly: true, site: siteOf(texts) } : {};
 }
 
 /** Your browser loads the picture (as when you look at it on Google) and hands over its pixels. */
@@ -364,8 +379,10 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
     }
   }
 
-  function refused() {
-    setNote(t("logo.up.linkOnly"));
+  // A full-size picture on Google Images comes from the website it was found on, and websites
+  // rarely let other pages read their pictures. Google's own small preview always comes along.
+  function refused(site?: string | null) {
+    setNote(site ? t("logo.up.linkFrom", { host: site }) : t("logo.up.linkOnly"));
     setNudge((n) => n + 1);
   }
 
@@ -499,7 +516,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
     const got = fromDrop(e.dataTransfer);
     if (got.file) void open(got.file);
     else if (got.link) void fetchLink(got.link);
-    else if (got.linkOnly) refused();
+    else if (got.linkOnly) refused(got.site);
     else setNote(t("logo.up.unreadable"));
   }
   const dragProps = {
