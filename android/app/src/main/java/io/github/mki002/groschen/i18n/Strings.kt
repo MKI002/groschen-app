@@ -292,8 +292,8 @@ object De : Strings {
     override val setupInBrowser = "Einrichtung im Browser abschließen"
     override val connect = "Verbinden"
     override val connectSafety =
-        "Die App spricht nur mit deinem eigenen Server. Ohne HTTPS verbindet sie sich nur mit Adressen im Heimnetz " +
-            "oder über Tailscale bzw. WireGuard, damit nichts unverschlüsselt durchs Internet geht."
+        "Zu Hause reicht die Adresse deines Servers im Heimnetz. Von unterwegs geht es über Tailscale, WireGuard " +
+            "oder eine https://-Adresse."
     override val loginTitle = "Anmelden"
     override val change = "Ändern"
     override val username = "Benutzername"
@@ -319,8 +319,8 @@ object De : Strings {
         ServerAddress.Reason.EMPTY -> "Bitte gib die Adresse deines Groschen-Servers ein."
         ServerAddress.Reason.INVALID -> "Das sieht nicht nach einer Adresse aus. Beispiel: 192.168.178.20:8420"
         ServerAddress.Reason.PUBLIC_HTTP ->
-            "Ohne HTTPS verbindet sich die App nur mit Adressen im Heimnetz oder über Tailscale. Für Adressen im " +
-                "Internet nutze https://."
+            "Diese Adresse liegt im Internet, dafür braucht die App https://. Zu Hause nimm die Adresse im " +
+                "Heimnetz, etwa 192.168.178.20:8420."
     }
     override val notGroschen = "Unter dieser Adresse antwortet kein Groschen."
     override val setupFirst = "Groschen ist noch nicht eingerichtet. Schließ die Einrichtung im Browser ab und verbinde dich dann."
@@ -476,7 +476,7 @@ object De : Strings {
 
     override val server = "Server"
     override val encrypted = "Verschlüsselt (HTTPS)"
-    override val unencryptedLan = "Ohne HTTPS, nur im Heimnetz oder über VPN"
+    override val unencryptedLan = "Heimnetz oder VPN, HTTPS nicht nötig"
     override val openWebSub = "Bank, Kategorien, Backups und alles Weitere"
     override fun loggedInAs(name: String) = "Angemeldet als $name"
     override val fingerprintLogin = "Mit Fingerabdruck anmelden"
@@ -564,8 +564,8 @@ object En : Strings {
     override val setupInBrowser = "Finish the setup in the browser"
     override val connect = "Connect"
     override val connectSafety =
-        "The app only talks to your own server. Without HTTPS it only connects to addresses in your home network " +
-            "or over Tailscale or WireGuard, so nothing crosses the internet unencrypted."
+        "At home, your server's address in your home network is enough. On the go, connect over Tailscale, " +
+            "WireGuard or an https:// address."
     override val loginTitle = "Log in"
     override val change = "Change"
     override val username = "Username"
@@ -591,8 +591,8 @@ object En : Strings {
         ServerAddress.Reason.EMPTY -> "Please type the address of your Groschen server."
         ServerAddress.Reason.INVALID -> "That doesn't look like an address. Example: 192.168.178.20:8420"
         ServerAddress.Reason.PUBLIC_HTTP ->
-            "Without HTTPS the app only connects to addresses in your home network or over Tailscale. Use https:// " +
-                "for addresses on the internet."
+            "This address is on the internet, so the app needs https:// for it. At home, use the address in your " +
+                "home network, like 192.168.178.20:8420."
     }
     override val notGroschen = "No Groschen answers at this address."
     override val setupFirst = "Groschen isn't set up yet. Finish the setup in the browser, then connect."
@@ -746,7 +746,7 @@ object En : Strings {
 
     override val server = "Server"
     override val encrypted = "Encrypted (HTTPS)"
-    override val unencryptedLan = "Without HTTPS, home network or VPN only"
+    override val unencryptedLan = "Home network or VPN, no HTTPS needed"
     override val openWebSub = "Bank, categories, backups and everything else"
     override fun loggedInAs(name: String) = "Logged in as $name"
     override val fingerprintLogin = "Log in with fingerprint"
