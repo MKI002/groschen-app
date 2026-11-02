@@ -1,0 +1,104 @@
+# Once a month: brings the built-in brand logos up to date with the newest Simple Icons release.
+# Only the logo files in frontend/src/data/logos change; the app itself still never goes online.
+# The new files go through the same lint, tests and web build as every change before they land
+# on main, and then the image and the demo are published as after any merge.
+# Actions are pinned to commit hashes; the tag they stand for is in the comment.
+name: Brand logos
+
+on:
+  schedule:
+    - cron: "0 5 5 * *" # the 5th of every month, 05:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: logos
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update brand logos
+    if: github.repository == 'MKI002/groschen-app'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: write # push the new logo files to main
+      actions: write # start the image and demo builds afterwards
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12.14"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.23.3"
+
+      - name: Look for a newer Simple Icons release
+        id: release
+        run: |
+          latest=$(npm view simple-icons version)
+          [[ "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Unexpected version: $latest"; exit 1; }
+          current=$(python3 -I -c "import json; print(json.load(open('frontend/src/data/logos/index.json'))['source'].split()[2])")
+          echo "Shipped: $current, newest: $latest"
+          if [ "$latest" = "$current" ]; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "version=$latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebuild the logo files
+        if: steps.release.outputs.new == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/simple-icons"
+          (cd "$RUNNER_TEMP/simple-icons" && npm pack "simple-icons@$VERSION" --ignore-scripts --silent && tar -xzf "simple-icons-$VERSION.tgz")
+          python3 -I frontend/scripts/build_logos.py "$RUNNER_TEMP/simple-icons/package"
+          git status --short
+
+      - name: Install backend packages
+        if: steps.release.outputs.new == 'true'
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: --no-deps -r backend/requirements.txt
+          python -m pip install -r backend/requirements-dev.txt
+
+      - name: Tests and web build
+        if: steps.release.outputs.new == 'true'
+        run: |
+          (cd backend && ruff check . && ruff format --check . && python -m pytest -q)
+          (cd frontend && npm ci --ignore-scripts --no-audit --no-fund && npm run build)
+
+      - name: Put the new logos on main
+        id: push
+        if: steps.release.outputs.new == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/data/logos
+          if git diff --cached --quiet; then
+            echo "Nothing changed in the logo files."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "Update brand logos to Simple Icons $VERSION"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with this workflow's token doesn't start other workflows by itself.
+      - name: Publish the image and the demo
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run build.yml --ref main
+          gh workflow run demo.yml --ref main

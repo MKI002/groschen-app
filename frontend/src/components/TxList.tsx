@@ -1,7 +1,8 @@
 import { Fragment, useMemo, useState } from "react";
 import { catName, locale, t, useT } from "../i18n";
-import { colorVar, dateShort, daysFrom, eur, initial, money, monthLong, veil } from "../lib/format";
+import { colorVar, dateShort, daysFrom, eur, money, monthLong, veil } from "../lib/format";
 import type { Tx } from "../lib/types";
+import { MerchantAv } from "./Logo";
 import { Icon } from "./Icons";
 import { allBack, BackLine } from "./Refunds";
 
@@ -40,7 +41,7 @@ export function dayHead(iso: string) {
 type Entry = { tx: Tx } | { day: string; roundups: Tx[] };
 
 // The one way a list of bookings looks, on Transactions and on every detail page: grouped by day with
-// the day's sum (when sorted by date and the day has more than one), each row a softly tinted initial
+// the day's sum (when sorted by date and the day has more than one), each row the merchant's logo or initial
 // in the category's colour, the payee with its note or purpose, the category, the account and the
 // amount. Money that came back shows on both bookings, and a payment that came back whole is struck
 // through. The whole row opens the booking; the tick beside a guessed category accepts the guess
@@ -95,9 +96,7 @@ export function TxList({ items, byDay, onOpen, accepted, onAccept, showAccount =
         style={{ ["--c" as string]: color, ["--i" as string]: Math.min(n++, 14) }}
       >
         <button type="button" className="txl-hit" onClick={() => onOpen(tx)} aria-label={t("tx.open", { merchant: tx.merchant, amount: eur(tx.amount), date: dateShort(tx.date) })} />
-        <span className="txl-av" aria-hidden="true">
-          {initial(tx.merchant)}
-        </span>
+        <MerchantAv name={tx.merchant} />
         <span className="txl-main">
           <span className="txl-name">
             <span className="txl-nm">{tx.merchant}</span>
