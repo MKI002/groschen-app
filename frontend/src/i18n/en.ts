@@ -317,7 +317,7 @@ export const en = {
   "logo.letterSub": "no logo",
   "logo.uploadSub": "click, drop or paste",
   "logo.useLetter": "Just the letter",
-  "logo.reset": "Automatic again",
+  "logo.reset": "Automatic",
   "logo.search": "Search {n} built-in logos",
   "logo.none": "No built-in logo with that name.",
   "logo.failed": "That didn't work. Try a PNG or JPEG picture.",
