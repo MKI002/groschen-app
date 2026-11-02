@@ -76,7 +76,10 @@ A debug build installs next to the released app (it has its own id, `….grosche
 ## Releases on GitHub
 
 Every pull request that changes the app is built, unit-tested and its libraries are checked for
-known vulnerabilities ([`.github/workflows/android.yml`](../.github/workflows/android.yml)).
+known vulnerabilities ([`.github/workflows/android.yml`](../.github/workflows/android.yml)). The
+release build then runs on an Android emulator: it connects to a Groschen server with invented
+demo data, logs in and opens every page ([`scripts/smoke_test.py`](scripts/smoke_test.py)). The
+screenshots of that run are kept with the workflow run for two weeks.
 Each change on `main` is then published as a signed APK under Releases.
 
 Android only installs an update when it is signed with the same key as the installed app. That
