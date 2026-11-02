@@ -56,3 +56,12 @@ def test_bundled_logos_are_public_domain_and_complete():
     assert index["exact"]["CLAUDE"] == "claude"
     for name in ("MAX", "CLAUDE", "MARKUS", "THOMAS"):
         assert name not in index["any"] and name not in index["lead"]
+
+
+def test_the_page_may_load_pictures_only_from_google_images(client):  # noqa: F811
+    # A logo dragged in from Google Images is loaded by the browser; the server fetches nothing,
+    # and the page may still only talk to Groschen itself.
+    csp = dict(p.strip().split(" ", 1) for p in client.get("/api/health").headers["content-security-policy"].split(";"))
+    assert csp["connect-src"] == "'self'"
+    outside = [s for s in csp["img-src"].split() if s.startswith("https://")]
+    assert outside and all(s.endswith((".gstatic.com", ".googleusercontent.com")) and "*" not in s for s in outside)

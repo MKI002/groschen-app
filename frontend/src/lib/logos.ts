@@ -152,17 +152,21 @@ export function autoSlug(name: string): string | null {
   const all = words(name);
   let lw = all;
   while (lw.length && (LEAD_SKIP.has(lw[0]) || /^\d+$/.test(lw[0]))) lw = lw.slice(1);
-  let whole = lw;
-  while (whole.length > 1 && TRAIL.has(whole[whole.length - 1])) whole = whole.slice(0, -1);
-  let slug: string | null = index.exact[whole.join(" ")] ?? null;
-  if (!slug) {
-    const anywhere = longest(all, index.any, false);
-    const lead = longest(lw, index.lead, true) ?? longest(lw, index.any, true);
-    const best = lead && (!anywhere || lead[0] >= anywhere[0]) ? lead : anywhere;
-    slug = best ? best[1] : null;
-  }
+  // "PayPal *Netflix" is Netflix, but "PayPal" (or "PayPal Europe") on its own is PayPal itself.
+  const slug = find(index, all, lw) ?? (lw.length < all.length ? find(index, all, all) : null);
   matched.set(name, slug);
   return slug;
+}
+
+function find(index: Index, all: string[], lw: string[]): string | null {
+  let whole = lw;
+  while (whole.length > 1 && TRAIL.has(whole[whole.length - 1])) whole = whole.slice(0, -1);
+  const exact = whole.length ? index.exact[whole.join(" ")] : undefined;
+  if (exact) return exact;
+  const anywhere = longest(all, index.any, false);
+  const lead = longest(lw, index.lead, true) ?? longest(lw, index.any, true);
+  const best = lead && (!anywhere || lead[0] >= anywhere[0]) ? lead : anywhere;
+  return best ? best[1] : null;
 }
 
 function luminance(hex: string): number {
