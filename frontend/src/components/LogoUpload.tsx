@@ -9,12 +9,29 @@ const OUT = 256; // px of the saved picture
 const MAX_ZOOM = 5;
 const MAX_FILE = 25 * 1024 * 1024;
 
-type Picked = { url: string; w: number; h: number; own: boolean };
+type Picked = { url: string; w: number; h: number };
 
 // A picture dragged in from another site: the browser may hand over the file itself (Chrome
 // usually does), a data: address (Google's image results often are), or only a link. Groschen
 // never loads a link itself; a picture that arrives as a link is copied and pasted instead.
-function fromDrop(dt: DataTransfer): { file?: Blob; url?: string; linkOnly?: boolean } {
+// A data: address is decoded here into a file, so nothing dropped is ever used as an address.
+const DATA_URL = /^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/;
+const IMG_SRC = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/i;
+
+function dataToBlob(text: string): Blob | null {
+  const m = DATA_URL.exec(text.trim());
+  if (!m || m[2].length > MAX_FILE * 1.4) return null;
+  try {
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: m[1] === "image/jpg" ? "image/jpeg" : m[1] });
+  } catch {
+    return null;
+  }
+}
+
+function fromDrop(dt: DataTransfer): { file?: Blob; linkOnly?: boolean } {
   const file = Array.from(dt.files).find((f) => f.type.startsWith("image/"));
   if (file) return { file };
   for (const item of Array.from(dt.items ?? [])) {
@@ -23,12 +40,13 @@ function fromDrop(dt: DataTransfer): { file?: Blob; url?: string; linkOnly?: boo
       if (f) return { file: f };
     }
   }
-  const html = dt.getData("text/html");
-  const src = html ? new DOMParser().parseFromString(html, "text/html").querySelector("img")?.getAttribute("src") : null;
-  const links = [src, ...dt.getData("text/uri-list").split(/\r?\n/), dt.getData("text/plain")].map((s) => (s ?? "").trim()).filter((s) => s && !s.startsWith("#"));
-  const data = links.find((s) => /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(s));
-  if (data) return { url: data };
-  return links.length ? { linkOnly: true } : {};
+  const src = IMG_SRC.exec(dt.getData("text/html") || "")?.[1] ?? "";
+  const texts = [src, ...dt.getData("text/uri-list").split(/\r?\n/), dt.getData("text/plain")].filter((x) => x && !x.startsWith("#"));
+  for (const text of texts) {
+    const blob = dataToBlob(text);
+    if (blob) return { file: blob };
+  }
+  return texts.length ? { linkOnly: true } : {};
 }
 
 function fromClipboard(e: ClipboardEvent): Blob | null {
@@ -36,6 +54,21 @@ function fromClipboard(e: ClipboardEvent): Blob | null {
     if (item.kind === "file" && item.type.startsWith("image/")) return item.getAsFile();
   }
   return null;
+}
+
+// The picture as it will look: a round badge of the given size.
+function Mini({ pic, pos, scale, size }: { pic: Picked; pos: { x: number; y: number }; scale: number; size: number }) {
+  const k = size / STAGE;
+  return (
+    <span className="lup-mini" style={{ width: size, height: size }}>
+      <img
+        src={pic.url}
+        alt=""
+        draggable={false}
+        style={{ width: pic.w * scale * k, height: pic.h * scale * k, transform: `translate(-50%, -50%) translate(${pos.x * k}px, ${pos.y * k}px)` }}
+      />
+    </span>
+  );
 }
 
 // The three ways in, each shown as a tiny move that plays once when the dialog opens and again on hover.
@@ -97,6 +130,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
   const [note, setNote] = useState<string | null>(null);
   const [nudge, setNudge] = useState(0); // bumps to point at the Paste chip when a site only gave a link
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const file = useRef<HTMLInputElement>(null);
@@ -104,19 +138,19 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
   const drag = useRef<{ id: number; x: number; y: number; px: number; py: number } | null>(null);
   const depth = useRef(0);
 
-  function open(src: Blob | string) {
+  function open(src: Blob) {
     setNote(null);
-    if (typeof src !== "string" && src.size > MAX_FILE) return setNote(t("logo.up.tooBig"));
-    const own = typeof src !== "string";
-    const url = own ? URL.createObjectURL(src) : src;
+    if (src.size > MAX_FILE) return setNote(t("logo.up.tooBig"));
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(src.type)) return setNote(t("logo.up.unreadable"));
+    const url = URL.createObjectURL(src);
     const img = new Image();
     img.onload = () => {
-      setPic({ url, w: img.naturalWidth, h: img.naturalHeight, own });
+      setPic({ url, w: img.naturalWidth, h: img.naturalHeight });
       setZoom(1);
       setPos({ x: 0, y: 0 });
     };
     img.onerror = () => {
-      if (own) URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
       setNote(t("logo.up.unreadable"));
     };
     img.src = url;
@@ -139,7 +173,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
   }, []);
   useEffect(
     () => () => {
-      if (pic?.own) URL.revokeObjectURL(pic.url);
+      if (pic) URL.revokeObjectURL(pic.url);
     },
     [pic],
   );
@@ -197,7 +231,6 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
     setOver(false);
     const got = fromDrop(e.dataTransfer);
     if (got.file) open(got.file);
-    else if (got.url) open(got.url);
     else if (got.linkOnly) {
       setNote(t("logo.up.linkOnly"));
       setNudge((n) => n + 1);
@@ -240,7 +273,8 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
       const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, "image/png"));
       if (!blob) throw new Error("png");
       await uploadLogoBlob(name, blob);
-      onDone();
+      setSaved(true);
+      window.setTimeout(onDone, 700);
     } catch {
       setNote(t("logo.failed"));
       setBusy(false);
@@ -252,6 +286,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
       {!pic ? (
         <button type="button" className={`lup-drop${over ? " over" : ""}`} onClick={() => file.current?.click()}>
           <span className="lup-orb" aria-hidden="true">
+            <span className="lup-orb-ring" />
             <Icon name="upload" size={22} />
           </span>
           <b>{over ? t("logo.up.release") : t("logo.up.drop")}</b>
@@ -260,7 +295,8 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
       ) : (
         <div className={`lup-crop${over ? " over" : ""}`}>
           <div
-            className="lup-stage"
+            key={pic.url}
+            className={`lup-stage${saved ? " saved" : ""}`}
             ref={stage}
             tabIndex={0}
             role="img"
@@ -279,27 +315,33 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
               style={{ width: pic.w * scale, height: pic.h * scale, transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px)` }}
             />
             <span className="lup-ring" aria-hidden="true" />
+            {saved && (
+              <span className="lup-ok" aria-hidden="true">
+                <Icon name="check" size={28} />
+              </span>
+            )}
           </div>
           <div className="lup-side">
             <span className="lup-preview" aria-hidden="true">
-              {[54, 36].map((s) => (
-                <span key={s} className="lup-mini" style={{ width: s, height: s }}>
-                  <img
-                    src={pic.url}
-                    alt=""
-                    style={{
-                      width: (pic.w * scale * s) / STAGE,
-                      height: (pic.h * scale * s) / STAGE,
-                      transform: `translate(-50%, -50%) translate(${(pos.x * s) / STAGE}px, ${(pos.y * s) / STAGE}px)`,
-                    }}
-                  />
+              <Mini pic={pic} pos={pos} scale={scale} size={64} />
+              <span className="lup-row">
+                <Mini pic={pic} pos={pos} scale={scale} size={34} />
+                <span className="lup-row-t">
+                  <b>{name}</b>
+                  <small>{t("logo.up.today")}</small>
                 </span>
-              ))}
+              </span>
             </span>
             <small className="muted">{t("logo.up.moveHint")}</small>
             <label className="lup-zoom">
               <Icon name="zoomOut" size={14} />
-              <input type="range" min={1} max={MAX_ZOOM} step={0.01} value={zoom} aria-label={t("logo.up.zoom")} onChange={(e) => setZoomKeep(Number(e.target.value))} />
+              <input
+                type="range"
+                min={1}
+                max={MAX_ZOOM}
+                step={0.01}
+                value={zoom}
+                style={{ ["--p" as string]: `${((zoom - 1) / (MAX_ZOOM - 1)) * 100}%` }} aria-label={t("logo.up.zoom")} onChange={(e) => setZoomKeep(Number(e.target.value))} />
               <Icon name="zoomIn" size={14} />
             </label>
           </div>
@@ -323,7 +365,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
         </button>
         <span className="grow" />
         {pic && (
-          <button type="button" className="btn primary" onClick={save} disabled={busy}>
+          <button type="button" className="btn primary" onClick={save} disabled={busy || saved}>
             {busy && <Spinner />}
             {t("common.save")}
           </button>

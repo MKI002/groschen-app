@@ -1,6 +1,6 @@
 """Build src/data/logos/, the brand logos Groschen ships, from a Simple Icons release.
 
-    npm pack simple-icons@16.36.0 && tar xzf simple-icons-16.36.0.tgz
+    npm pack simple-icons@<version> --ignore-scripts && tar xzf simple-icons-<version>.tgz
     python3 -I frontend/scripts/build_logos.py package   # from the repository root
 
 Every icon whose licence allows it goes in; the app never fetches a logo from the internet.
@@ -74,13 +74,15 @@ def bucket(slug: str) -> int:
 
 
 def key(s: str) -> str:
-    return "".join(
-        c for c in unicodedata.normalize("NFKD", s.casefold()) if c.isalnum()
-    )
+    return "".join(c for c in unicodedata.normalize("NFKD", s.casefold()) if c.isalnum())
 
 
-def path_of(svg: str) -> str:
-    return re.search(r'<path d="([^"]+)"', svg).group(1)
+PATH = re.compile(r"^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\s-]+$")  # SVG path commands and numbers, nothing else
+
+
+def path_of(svg: str) -> str | None:
+    m = re.search(r'<path d="([^"]+)"', svg)
+    return m.group(1) if m and PATH.match(m.group(1)) and len(m.group(1)) < 60000 else None
 
 
 def main(pkg: str) -> None:
@@ -94,11 +96,12 @@ def main(pkg: str) -> None:
         if lic not in FREE or not svg.exists():
             skipped += 1
             continue
-        icons[icon["slug"]] = [
-            icon["title"],
-            icon["hex"].upper(),
-            path_of(svg.read_text()),
-        ]
+        path = path_of(svg.read_text())
+        ok = re.fullmatch(r"[0-9A-Fa-f]{6}", icon["hex"]) and re.fullmatch(r"[a-z0-9_.-]{1,80}", icon["slug"])
+        if not path or not ok:
+            skipped += 1
+            continue
+        icons[icon["slug"]] = [icon["title"][:80], icon["hex"].upper(), path]
         for name in [icon["title"], *((icon.get("aliases") or {}).get("aka") or [])]:
             by_name.setdefault(key(name), icon["slug"])
 
@@ -131,12 +134,7 @@ def main(pkg: str) -> None:
                     continue
                 if len(w) >= 2 and not all(x in COMMON or x.isdigit() for x in w):
                     put(lead, w, slug)
-                elif (
-                    len(w) == 1
-                    and len(w[0]) >= LONG
-                    and w[0] not in COMMON
-                    and not w[0].isdigit()
-                ):
+                elif len(w) == 1 and len(w[0]) >= LONG and w[0] not in COMMON and not w[0].isdigit():
                     put(lead, w, slug)
                 else:
                     put(exact, w, slug)
@@ -161,9 +159,7 @@ def main(pkg: str) -> None:
         chunks.setdefault(bucket(slug), {})[slug] = path
         out["icons"][slug] = [title, hexcode]
     for n, part in chunks.items():
-        (folder / f"{n:02d}.json").write_text(
-            json.dumps(part, separators=(",", ":")) + "\n"
-        )
+        (folder / f"{n:02d}.json").write_text(json.dumps(part, separators=(",", ":")) + "\n")
     dest = folder / "index.json"
     dest.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n")
     (folder / "NOTICE.md").write_text(
