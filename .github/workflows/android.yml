@@ -1,0 +1,158 @@
+# The Android app: built and tested on every pull request that touches it, checked for known
+# vulnerabilities in its libraries, and on main published as a signed APK under Releases.
+#
+# Signing needs two repository secrets (see android/README.md):
+#   ANDROID_KEYSTORE           the key file, base64-encoded
+#   ANDROID_KEYSTORE_PASSWORD  its password
+# Without them everything still builds and is tested; only the release is skipped, with a note.
+name: Android app
+
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build, test and scan the app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Also checks that the Gradle wrapper in the repository is the real one.
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
+
+      - name: Build the app
+        run: ./gradlew --no-daemon --stacktrace assembleDebug assembleRelease
+
+      # The exact libraries that end up inside the app, for the vulnerability scan.
+      - name: List the app's libraries
+        run: |
+          ./gradlew --no-daemon :app:dependencies --configuration releaseRuntimeClasspath --write-locks
+          mkdir -p "$RUNNER_TEMP/libraries"
+          cp app/gradle.lockfile "$RUNNER_TEMP/libraries/"
+          echo "$(grep -c = app/gradle.lockfile) libraries listed"
+
+      # A fixable high or critical vulnerability in one of them stops the release.
+      - name: Vulnerability scan of the app's libraries
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ runner.temp }}/libraries
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+  release:
+    name: Publish the APK
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: android
+    env:
+      VERSION: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Is the signing key there?
+        id: key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE" ] && [ -n "$PASSWORD" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### No APK published yet"
+              echo "The app was built and tested, but the signing key is missing."
+              echo "Add the repository secrets ANDROID_KEYSTORE and ANDROID_KEYSTORE_PASSWORD"
+              echo "(the steps are in android/README.md), then run this workflow again."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        if: steps.key.outputs.ready == 'true'
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        if: steps.key.outputs.ready == 'true'
+
+      # The key exists only for this step, in the runner's temporary folder.
+      - name: Build the signed APK
+        if: steps.key.outputs.ready == 'true'
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          GROSCHEN_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          GROSCHEN_BUILD_NUMBER: ${{ github.run_number }}
+          GROSCHEN_VERSION_NAME: ${{ env.VERSION }}
+        run: |
+          export GROSCHEN_KEYSTORE="$RUNNER_TEMP/groschen.p12"
+          trap 'rm -f "$GROSCHEN_KEYSTORE"' EXIT
+          printf '%s' "$KEYSTORE" | base64 --decode --ignore-garbage > "$GROSCHEN_KEYSTORE"
+          ./gradlew --no-daemon --stacktrace assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/groschen-$VERSION.apk"
+
+      - name: Publish the release
+        if: steps.key.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="$RUNNER_TEMP/groschen-$VERSION.apk"
+          sum=$(sha256sum "$apk" | cut -d' ' -f1)
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          The native Android app for your own Groschen server (Android 11 or newer).
+
+          **Install:** open this page on your phone, tap \`groschen-$VERSION.apk\` below and allow the
+          install. **Update:** install a newer APK over the old one, or let
+          [Obtainium](https://github.com/ImranR98/Obtainium) watch this repository.
+
+          SHA-256 of the APK: \`$sum\`
+          EOF
+          gh release create "android-v$VERSION" "$apk" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Groschen for Android $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md"

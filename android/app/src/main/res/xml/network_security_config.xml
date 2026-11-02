@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Groschen runs on your own server, often as plain http:// on an address at home
+  (http://192.168.178.20:8420). Android only allows that when it is said here, for any address,
+  because the app can't know your server's address in advance.
+
+  The app itself is stricter (data/ServerAddress.kt): plain http:// only for addresses in the home
+  network or a private tunnel (192.168.x.x, 10.x.x.x, a name like "nas", Tailscale 100.x.x.x and
+  *.ts.net). Anything on the internet needs https://.
+
+  For https://, certificates of a root you installed on the phone yourself are accepted too, for
+  servers with their own certificate authority.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
