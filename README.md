@@ -336,3 +336,11 @@ unraid/         Unraid container template
 docker-compose.yml  example for Docker Compose
 Dockerfile      web app, packages, model and app in one image
 ```
+
+## License
+
+Copyright © 2026 MKI002. Groschen is free software under the
+[GNU Affero General Public License v3.0](LICENSE): you may use, change and share it, and a copy
+you share or run for others must stay open source under the same licence and keep the credit
+to the author (see [NOTICE](NOTICE)). Brand logos come from Simple Icons (public domain) and
+belong to their owners; see [the logo notice](frontend/src/data/logos/NOTICE.md).
