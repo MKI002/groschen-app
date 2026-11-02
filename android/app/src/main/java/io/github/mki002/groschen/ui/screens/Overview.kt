@@ -124,8 +124,8 @@ private fun HeroCard(model: AppModel, a: Available) {
         }
 
         // The month to payday as a strip of days.
-        val since = a.since?.let(LocalDate::parse)
-        val until = a.until?.let(LocalDate::parse)
+        val since = a.since?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
+        val until = a.until?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
         if (since != null && until != null) {
             val today = LocalDate.now()
             val total = ChronoUnit.DAYS.between(since, until).toInt().coerceAtLeast(1)
