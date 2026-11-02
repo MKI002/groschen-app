@@ -16,3 +16,15 @@ secret.key
 .DS_Store
 *.tsbuildinfo
 dist-demo/
+
+# Android app
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/gradle.lockfile
+*.jks
+*.keystore
+*.p12
+*.apk
+*.aab

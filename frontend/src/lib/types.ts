@@ -689,6 +689,8 @@ export type InvestPayment = {
 };
 
 export type Passkey = { id: number; name: string; rp_id: string; created_at: string; last_used_at: string | null };
+// A phone that logs in with a fingerprint through the Android app.
+export type Phone = { id: number; name: string; created_at: string; last_used_at: string | null };
 export type LoginSession = {
   id: number;
   current: boolean;
@@ -696,6 +698,6 @@ export type LoginSession = {
   last_seen: string;
   ip: string | null;
   agent: string | null;
-  method: "password" | "passkey";
+  method: "password" | "passkey" | "device";
 };
-export type LoginEvent = { at: string; username: string | null; method: "password" | "passkey"; ok: number; ip: string | null; agent: string | null };
+export type LoginEvent = { at: string; username: string | null; method: "password" | "passkey" | "device"; ok: number; ip: string | null; agent: string | null };

@@ -5,7 +5,7 @@ import { t, useT } from "../i18n";
 import { api } from "../lib/api";
 import { dateShort, relTime } from "../lib/format";
 import { addPasskey, cancelled, passkeyBlocker } from "../lib/passkey";
-import type { LoginEvent, LoginSession, Passkey, SettingsValues } from "../lib/types";
+import type { LoginEvent, LoginSession, Passkey, Phone, SettingsValues } from "../lib/types";
 
 type Set = <K extends keyof SettingsValues>(key: K, value: SettingsValues[K]) => Promise<void>;
 
@@ -137,6 +137,43 @@ function Passkeys({ values, data, reload, onChanged }: { values: SettingsValues;
   );
 }
 
+// Phones that log in with a fingerprint through the Android app. Removing one logs it out at once.
+function Phones() {
+  const toast = useToast();
+  const { confirm, dialog } = useConfirm();
+  const { data, reload } = useApi<Phone[]>("/devices");
+
+  async function remove(p: Phone) {
+    const ok = await confirm({ title: t("sec.dev.deleteTitle", { name: p.name }), text: t("sec.dev.deleteText"), action: t("common.delete") });
+    if (!ok) return;
+    try {
+      await api.del(`/devices/${p.id}`);
+      toast(t("sec.dev.removed"));
+      reload();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
+  return (
+    <Card title={t("sec.dev.title")} sub={t("sec.dev.sub")}>
+      {data?.map((p) => (
+        <Row
+          key={p.id}
+          title={p.name}
+          sub={`${t("sec.dev.created", { date: dateShort(p.created_at) })} · ${p.last_used_at ? t("sec.pk.used", { when: relTime(p.last_used_at) }) : t("sec.pk.unused")}`}
+        >
+          <button className="ib" aria-label={t("common.delete")} title={t("common.delete")} onClick={() => remove(p)}>
+            <Icon name="trash" size={15} />
+          </button>
+        </Row>
+      ))}
+      {data && !data.length && <p className="muted small sec-empty">{t("sec.dev.none")}</p>}
+      {dialog}
+    </Card>
+  );
+}
+
 function Rename({ passkey, onClose, onSaved }: { passkey: Passkey; onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState(passkey.name);
   const [error, setError] = useState<string | null>(null);
@@ -263,6 +300,7 @@ export function SecuritySettings({ values, set, onChanged }: { values: SettingsV
   return (
     <>
       <Passkeys values={values} data={data} reload={reload} onChanged={onChanged} />
+      <Phones />
       <Card title={t("sec.login.title")}>
         <Row title={t("sec.pw.title")} sub={hasPasskey ? t(values.password_login ? "sec.pw.on" : "sec.pw.off") : t("sec.pw.needsPasskey")}>
           {hasPasskey && <Switch checked={values.password_login} onChange={(v) => set("password_login", v)} label={t("sec.pw.title")} />}

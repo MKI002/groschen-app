@@ -35,7 +35,7 @@ INDEX = "index.json"
 # so going back to an old state never brings back an old retention that would
 # then delete the newer backups.
 # Kept as they are now when a backup is restored, so a restore never changes how to log in.
-LOGIN_TABLES = ("users", "sessions", "passkeys")
+LOGIN_TABLES = ("users", "sessions", "passkeys", "devices")
 LOGIN_KEYS = ("session_days", "idle_minutes", "login_max_failures", "login_lock_minutes", "password_login")
 POLICY_KEYS = (
     "backup_plan",
@@ -396,7 +396,7 @@ def restore(name: str) -> dict:
     """Put the database back to the state of a backup.
 
     First saves the current state as a "safety" backup, so a restore can itself be undone.
-    The login (users, sessions, passkeys and the login settings) and the backup settings
+    The login (users, sessions, passkeys, phones and the login settings) and the backup settings
     stay as they are now.
     """
     path = path_for(name)

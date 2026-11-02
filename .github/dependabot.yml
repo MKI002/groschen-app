@@ -1,5 +1,5 @@
 # Dependabot checks once a month for new versions and opens at most one pull request
-# per area (Python packages, web app packages, base images, GitHub build steps).
+# per area (Python packages, web app packages, Android app, base images, GitHub build steps).
 # Each pull request runs the full build, tests and security scans before it can be merged.
 #
 # Big version jumps (a new major version, or a new Python release like 3.12 -> 3.14)
@@ -41,6 +41,18 @@ updates:
         update-types: ["version-update:semver-major"]
     groups:
       base-images:
+        patterns: ["*"]
+
+  # The Android app: build tools and libraries (android/gradle/libs.versions.toml).
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      android:
         patterns: ["*"]
 
   - package-ecosystem: github-actions
