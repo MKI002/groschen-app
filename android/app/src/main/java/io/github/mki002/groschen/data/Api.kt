@@ -187,21 +187,22 @@ class GroschenApi(
                 }
             }
             .build()
-        val response = try {
-            http.newCall(request).await()
+        // The answer is read completely on OkHttp's own thread: reading from the network on the
+        // thread that draws the screen makes Android close the app.
+        val (code, text) = try {
+            http.newCall(request).await { r ->
+                cookieFrom(r)
+                r.code to r.body.string()
+            }
         } catch (e: IOException) {
             throw ApiException(0, texts().unreachable)
         }
-        return response.use { r ->
-            cookieFrom(r)
-            val text = r.body.string()
-            if (r.isSuccessful) return@use text
-            if (r.code == 401 && !path.startsWith("login")) {
-                token = null
-                onLoggedOut?.invoke()
-            }
-            throw ApiException(r.code, messageFrom(text) ?: texts().failed(r.code))
+        if (code in 200..299) return text
+        if (code == 401 && !path.startsWith("login")) {
+            token = null
+            onLoggedOut?.invoke()
         }
+        throw ApiException(code, messageFrom(text) ?: texts().failed(code))
     }
 
     // The session the server hands out at login, or takes back at logout.
@@ -228,7 +229,8 @@ class GroschenApi(
     }
 }
 
-private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
+/** Runs the call and [read]s its answer on OkHttp's thread, so nothing waits on the network elsewhere. */
+private suspend fun <T> Call.await(read: (Response) -> T): T = suspendCancellableCoroutine { cont ->
     cont.invokeOnCancellation { cancel() }
     enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) {
@@ -236,7 +238,14 @@ private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont 
         }
 
         override fun onResponse(call: Call, response: Response) {
-            if (cont.isActive) cont.resume(response) else response.close()
+            val result = try {
+                response.use(read)
+            } catch (e: Exception) {
+                // Thrown here, it would end the app; the caller gets it instead.
+                if (cont.isActive) cont.resumeWithException(e)
+                return
+            }
+            if (cont.isActive) cont.resume(result)
         }
     })
 }

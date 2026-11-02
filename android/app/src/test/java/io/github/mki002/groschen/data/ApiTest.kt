@@ -1,8 +1,18 @@
 package io.github.mki002.groschen.data
 
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import okhttp3.OkHttpClient
+import java.io.FilterInputStream
+import java.io.InputStream
+import java.net.InetAddress
+import java.net.Socket
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import javax.net.SocketFactory
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -10,6 +20,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class ApiTest {
     private val server = MockWebServer()
@@ -54,6 +65,24 @@ class ApiTest {
     }
 
     @Test
+    fun `answers are read on the network thread, never on the caller's`() {
+        // Android closes an app that reads from the network on the thread that draws the screen.
+        // Here a socket refuses reads on the "screen" thread, and the answer arrives slowly, so
+        // it can't be read in one go together with the headers.
+        val big = (1..400).joinToString(",", "[", "]") { """{"id":$it,"name":"Category $it","group":"G"}""" }
+        server.enqueue(json(big).newBuilder().throttleBody(512, 5, TimeUnit.MILLISECONDS).build())
+        val client = OkHttpClient.Builder().socketFactory(NoReadsOn("screen")).build()
+        val api = GroschenApi(server.url("/"), "Groschen-Android/test", { "de" }, { texts }, client)
+        val screen = Executors.newSingleThreadExecutor { Thread(it, "screen") }
+        try {
+            val categories = runBlocking { withContext(screen.asCoroutineDispatcher()) { api.categories() } }
+            assertEquals(400, categories.size)
+        } finally {
+            screen.shutdown()
+        }
+    }
+
+    @Test
     fun `an ended login is reported once`() = runBlocking {
         server.enqueue(json("""{"detail":"Not logged in."}""", 401))
         val api = api()
@@ -84,4 +113,26 @@ class ApiTest {
         assertEquals(0, e.status)
         assertEquals("unreachable", e.message)
     }
+}
+
+/** Sockets whose reads fail on one thread, like Android's rule for the screen thread. */
+private class NoReadsOn(private val thread: String) : SocketFactory() {
+    override fun createSocket(): Socket = object : Socket() {
+        override fun getInputStream(): InputStream = object : FilterInputStream(super.getInputStream()) {
+            override fun read(): Int = guard { super.read() }
+            override fun read(b: ByteArray, off: Int, len: Int): Int = guard { super.read(b, off, len) }
+        }
+    }
+
+    private inline fun <T> guard(read: () -> T): T {
+        // Coroutines add " @coroutine#1" to the name while tests run.
+        if (Thread.currentThread().name.startsWith(thread)) fail("read from the network on the $thread thread")
+        return read()
+    }
+
+    override fun createSocket(host: String, port: Int): Socket = unused()
+    override fun createSocket(host: String, port: Int, localHost: InetAddress, localPort: Int): Socket = unused()
+    override fun createSocket(host: InetAddress, port: Int): Socket = unused()
+    override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int): Socket = unused()
+    private fun unused(): Nothing = throw UnsupportedOperationException()
 }
