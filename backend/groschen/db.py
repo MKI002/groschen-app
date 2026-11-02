@@ -291,6 +291,17 @@ CREATE TABLE IF NOT EXISTS csv_mappings (
     created_at TEXT NOT NULL
 );
 
+-- The logo a merchant shows when the user changed it: a picture of their own, another built-in
+-- logo, or just the letter. Key: the shown name without case, accents or spaces (names.name_key).
+CREATE TABLE IF NOT EXISTS vendor_logos (
+    key TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,  -- image | brand | letter
+    slug TEXT,           -- the built-in logo, for kind brand
+    mime TEXT,           -- for kind image
+    image BLOB,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS netlog (
     id INTEGER PRIMARY KEY,
     ts TEXT NOT NULL,

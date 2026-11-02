@@ -1884,3 +1884,98 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .sec-dot{flex:none;width:22px;height:22px;display:grid;place-items:center;border-radius:99px;margin-top:1px}
 .sec-dot.ok{background:var(--good-soft);color:var(--good)}
 .sec-dot.bad{background:var(--bad-soft);color:var(--bad)}
+
+/* Merchant logos: the brand's logo on its own colour, the user's picture, or a letter on the category's colour. */
+.txl-av.letter{background:color-mix(in srgb,var(--c,var(--c-muted)) 78%,#fff);color:#121418;box-shadow:none}
+.txl-av.logo{background:var(--b);box-shadow:none;overflow:hidden}
+.txl-av.logo.dark{box-shadow:inset 0 0 0 1px var(--line-2)}
+.txl-av.logo svg{width:50%;height:50%;display:block}
+.txl-av.logo.img{background:var(--surface-3)}
+.txl-av.logo.img img{width:100%;height:100%;object-fit:cover;display:block}
+.txl-row.fold .txl-av.letter{background:color-mix(in srgb,var(--c) 12%,transparent);color:var(--c)}
+.txtop{display:flex;align-items:center;gap:16px}
+.txtop .txhead{flex:1;min-width:0}
+.logo-btn{position:relative;flex:none;padding:0;border:0;background:none;border-radius:50%;cursor:pointer;transition:transform .2s var(--ease-spring)}
+.logo-btn:hover{transform:scale(1.05)}
+.logo-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.logo-pen{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:var(--surface-3);color:var(--ink-2);box-shadow:0 0 0 3px var(--surface);opacity:0;transform:scale(.7);transition:opacity .2s,transform .2s var(--ease-spring)}
+.logo-btn:hover .logo-pen,.logo-btn:focus-visible .logo-pen{opacity:1;transform:none}
+@media (hover:none){.logo-pen{opacity:1;transform:none}}
+.logo-now{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.logo-now>span:last-child{display:grid;gap:2px}
+.logo-acts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.logo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;max-height:300px;overflow:auto;margin:-4px 0 10px}
+.logo-pick{display:grid;justify-items:center;gap:6px;padding:10px 4px;border:0;border-radius:12px;background:none;color:var(--ink-2);cursor:pointer;min-width:0}
+.logo-pick:hover{background:var(--hover)}
+.logo-pick small{font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logo-note{margin-top:4px}
+/* The upload dialog: a drop zone, then the picture behind a round cutout. */
+.lup{animation:rise .35s var(--ease-out)}
+.lup-drop{width:100%;display:grid;justify-items:center;gap:6px;padding:34px 20px 28px;border-radius:16px;border:1.5px dashed var(--line-2);background:var(--sunk);color:var(--ink);cursor:pointer;text-align:center;
+  transition:border-color .25s,background .25s,transform .25s var(--ease-spring)}
+.lup-drop b{font-size:16px;font-weight:650}
+.lup-drop:hover,.lup-drop:focus-visible{border-color:var(--accent-line);outline:none}
+.lup-drop.over{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.015)}
+.lup-orb{width:58px;height:58px;display:grid;place-items:center;border-radius:50%;margin-bottom:8px;background:var(--surface-3);color:var(--accent-ink);
+  box-shadow:0 0 0 1px var(--line-2);transition:transform .35s var(--ease-spring),background .25s,color .25s,box-shadow .35s}
+.lup-drop:hover .lup-orb{transform:translateY(-3px)}
+.lup-drop.over .lup-orb{transform:translateY(-6px) scale(1.12);background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 8px var(--accent-soft),0 10px 30px -8px rgba(214,180,110,.6)}
+.lup-hint{max-width:400px;margin-top:10px;color:var(--faint);font-size:12.5px;line-height:1.45}
+.lup-crop{display:flex;flex-wrap:wrap;align-items:center;gap:22px;padding:6px 0;animation:fade .3s var(--ease-out);border-radius:16px;transition:background .25s}
+.lup-crop.over{background:var(--accent-soft)}
+.lup-stage{position:relative;flex:none;overflow:hidden;border-radius:16px;background:repeating-conic-gradient(#1a1d22 0 25%,#14161a 0 50%) 0 0/16px 16px;cursor:grab;touch-action:none;user-select:none;animation:pop .35s var(--ease-spring)}
+.lup-stage:active{cursor:grabbing}
+.lup-stage:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.lup-stage img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none}
+.lup-ring{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 400px rgba(10,11,13,.72),inset 0 0 0 2px rgba(255,255,255,.85);pointer-events:none}
+.lup-side{display:grid;gap:12px;flex:1;min-width:180px}
+.lup-preview{display:flex;align-items:center;gap:12px}
+.lup-mini{position:relative;overflow:hidden;border-radius:50%;background:var(--surface-3);flex:none}
+.lup-mini img{position:absolute;left:50%;top:50%;max-width:none}
+.lup-zoom{display:flex;align-items:center;gap:10px;color:var(--muted)}
+.lup-zoom input{flex:1;accent-color:var(--accent)}
+.lup-note{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:var(--warn-soft);color:var(--warn);font-size:13px;line-height:1.45;animation:rise .3s var(--ease-out)}
+.lup-acts{display:flex;align-items:center;gap:8px;margin-top:16px}
+.lup-ways{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:14px}
+.way{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 7px;border-radius:14px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);text-align:left;
+  animation:rise .45s calc(.15s + var(--i) * .09s) var(--ease-out) both;transition:background .2s,box-shadow .2s}
+.way:hover{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-2)}
+.way-t{display:grid;line-height:1.2}
+.way-t b{font-size:13px;font-weight:650;color:var(--ink)}
+.way-t small{font-size:11.5px;color:var(--muted)}
+.way-fx{position:relative;width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--sunk);color:var(--accent-ink);overflow:hidden}
+/* Each move plays once after the chips arrive (staggered), then again whenever the chip is hovered. */
+.w-click .fx-ptr{animation:wayClick .7s calc(.7s + var(--i) * .45s) var(--ease-out) both}
+.w-click .fx-ripple{position:absolute;left:11px;top:7px;width:8px;height:8px;border-radius:50%;border:1.5px solid var(--accent);opacity:0;animation:wayRipple .7s calc(.85s + var(--i) * .45s) ease-out}
+.w-click:hover .fx-ptr{animation:wayClick2 .7s var(--ease-out)}
+.w-click:hover .fx-ripple{animation:wayRipple2 .7s .15s ease-out}
+.fx-tray{position:absolute;left:8px;right:8px;bottom:7px;height:9px;border:1.5px solid var(--faint);border-top:0;border-radius:0 0 4px 4px}
+.fx-card{position:absolute;left:12px;top:9px;width:16px;height:13px;display:grid;place-items:center;border-radius:3px;background:var(--accent);color:var(--on-accent);
+  animation:wayDrop .9s calc(.7s + var(--i) * .45s) var(--ease-spring) both}
+.w-drag:hover .fx-card{animation:wayDrop2 .9s var(--ease-spring)}
+.keys{gap:2px;grid-auto-flow:column;width:auto;padding:0 6px}
+.keys kbd{font:600 10px/1 var(--font);padding:5px 5px 6px;border-radius:5px;background:var(--surface-3);color:var(--ink-2);box-shadow:0 2px 0 #050607,inset 0 0 0 1px var(--line-2)}
+.w-paste .k1{animation:wayKey .5s calc(.7s + var(--i) * .45s) both}
+.w-paste .k2{animation:wayKey .5s calc(.85s + var(--i) * .45s) both}
+.w-paste:hover .k1{animation:wayKey2 .5s}
+.w-paste:hover .k2{animation:wayKey2 .5s .15s}
+@keyframes wayClick{0%{transform:translate(4px,4px)}45%{transform:translate(0,0) scale(1)}60%{transform:scale(.82)}100%{transform:scale(1)}}
+@keyframes wayClick2{0%{transform:translate(4px,4px)}45%{transform:translate(0,0) scale(1)}60%{transform:scale(.82)}100%{transform:scale(1)}}
+@keyframes wayRipple{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(2.6)}}
+@keyframes wayRipple2{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(2.6)}}
+@keyframes wayDrop{0%{transform:translate(-14px,-16px) rotate(-14deg);opacity:0}25%{opacity:1}100%{transform:none}}
+@keyframes wayDrop2{0%{transform:translate(-14px,-16px) rotate(-14deg);opacity:0}25%{opacity:1}100%{transform:none}}
+@keyframes wayKey{0%,100%{transform:none;box-shadow:0 2px 0 #050607,inset 0 0 0 1px var(--line-2)}45%{transform:translateY(2px);box-shadow:0 0 0 #050607,inset 0 0 0 1px var(--accent-line);color:var(--accent-ink)}}
+@keyframes wayKey2{0%,100%{transform:none;box-shadow:0 2px 0 #050607,inset 0 0 0 1px var(--line-2)}45%{transform:translateY(2px);box-shadow:0 0 0 #050607,inset 0 0 0 1px var(--accent-line);color:var(--accent-ink)}}
+.lup-ways.played .way,.lup-ways.played .way-fx *{animation:none}
+.lup-ways.played .w-click:hover .fx-ptr{animation:wayClick2 .7s var(--ease-out)}
+.lup-ways.played .w-click:hover .fx-ripple{animation:wayRipple2 .7s .15s ease-out}
+.lup-ways.played .w-drag:hover .fx-card{animation:wayDrop2 .9s var(--ease-spring)}
+.lup-ways.played .w-paste:hover .k1{animation:wayKey2 .5s}
+.lup-ways.played .w-paste:hover .k2{animation:wayKey2 .5s .15s}
+@media (prefers-reduced-motion:reduce){.way,.way *{animation:none!important}}
+/* A site gave only a link: the Paste chip lights up and shows its keys once more. */
+.lup-ways .w-paste.nudge{animation:wayNudge .6s var(--ease-spring);box-shadow:inset 0 0 0 1px var(--accent-line),0 0 0 4px var(--accent-soft)}
+.lup-ways .w-paste.nudge .k1{animation:wayKey2 .5s .25s}
+.lup-ways .w-paste.nudge .k2{animation:wayKey2 .5s .4s}
+@keyframes wayNudge{0%{transform:scale(.94)}60%{transform:scale(1.04)}100%{transform:none}}

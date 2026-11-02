@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PaySteps } from "../components/Charts";
+import { LogoButton, MerchantAv } from "../components/Logo";
 import { Icon } from "../components/Icons";
 import { celebrate, Odometer } from "../components/Motion";
 import { EVENT_LOOK, SubEventText } from "../components/Planner";
@@ -8,7 +9,7 @@ import { Card, ChangePill, Disclosure, Empty, ErrorNote, IconBadge, Loading, Mod
 import { catName, t, useT } from "../i18n";
 import { api } from "../lib/api";
 import { useApp } from "../lib/app";
-import { colorVar, dateShort, eur, initial, intervalName, relDay } from "../lib/format";
+import { colorVar, dateShort, eur, intervalName, relDay } from "../lib/format";
 import { drillPath, navigate, redirect, useSearch } from "../lib/router";
 import type { Plans, SubEvent, Subscription, Subscriptions as Subs } from "../lib/types";
 
@@ -41,9 +42,7 @@ function SubRow({ s, i, onOpen }: { s: Subscription; i: number; onOpen: () => vo
   const ended = s.status === "ended";
   return (
     <button type="button" className={`subrow stagger${ended ? " ended" : ""}`} style={{ ["--i" as string]: Math.min(i, 14), ["--c" as string]: subColor(s) }} onClick={onOpen}>
-      <span className="txl-av" aria-hidden="true">
-        {initial(s.name)}
-      </span>
+      <MerchantAv name={s.name} />
       <span className="txl-main">
         <span className="txl-name">
           <span className="txl-nm">{s.name}</span>
@@ -94,9 +93,7 @@ function SubDetail({ s, onClose, onMark }: { s: Subscription; onClose: () => voi
       }
     >
       <div className="subhead" style={{ ["--c" as string]: subColor(s) }}>
-        <span className="txl-av big" aria-hidden="true">
-          {initial(s.name)}
-        </span>
+        <LogoButton name={s.name} />
         <span>
           <span className="subhead-amt">
             {s.varies ? `≈ ${eur(s.monthly_cost)}` : eur(s.amount)} <small>{s.varies ? t("subs.perMonthAvg") : intervalName(s.interval)}</small>
@@ -267,9 +264,7 @@ export default function Subscriptions() {
           <div className="suggest-list">
             {data.suggestions.map((s, i) => (
               <div key={s.key} className={`suggest stagger${leaving.has(s.key) ? " leaving" : ""}`} style={{ ["--i" as string]: i, ["--c" as string]: subColor(s) }}>
-                <span className="txl-av" aria-hidden="true">
-                  {initial(s.name)}
-                </span>
+                <MerchantAv name={s.name} />
                 <div className="suggest-main">
                   <b>{s.name}</b>
                   <span className="muted small">

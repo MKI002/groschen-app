@@ -3,6 +3,7 @@ import { CategoryPicker } from "../components/CategoryPicker";
 import { searchEgg } from "../components/Eggs";
 import { FilterBar, filterQuery, useTxFilters } from "../components/Filters";
 import { Icon } from "../components/Icons";
+import { LogoButton } from "../components/Logo";
 import { celebrate } from "../components/Motion";
 import { LinkAsk, MoneyBackFor, PaymentBack, PaymentPicker } from "../components/Refunds";
 import { TxList } from "../components/TxList";
@@ -143,6 +144,8 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
         </>
       }
     >
+      <div className="txtop">
+      <LogoButton name={tx.merchant} />
       <div className="txhead">
         <span className={`txhead-amt${tx.amount > 0 ? " pos" : ""}`}>{tx.orig_amount != null && tx.fx_rate == null && tx.currency ? money(tx.orig_amount, tx.currency) : eur(tx.amount)}</span>
         {tx.orig_amount != null && tx.currency && (
@@ -156,6 +159,7 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
           {dayLabel(tx.date)} · {tx.account}
         </span>
         {tx.counts_for && <span className="tag">{t("tx.countsForLong", { month: monthLong(tx.counts_for) })}</span>}
+      </div>
       </div>
       {tx.cat_source && tx.cat_source in WHY && (
         <p className="why">
