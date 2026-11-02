@@ -1920,7 +1920,7 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .lup-stage:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .lup-stage img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none}
 .lup-ring{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 400px rgba(10,11,13,.72),inset 0 0 0 2px rgba(255,255,255,.85);pointer-events:none}
-.lup-side{display:grid;gap:12px;flex:1;min-width:180px;max-width:100%}
+.lup-side{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;flex:1;min-width:220px;max-width:100%}
 .lup-mini{position:relative;overflow:hidden;border-radius:50%;background:var(--surface-3);flex:none}
 .lup-mini img{position:absolute;left:50%;top:50%;max-width:none}
 .lup-zoom{display:flex;align-items:center;gap:10px;color:var(--muted)}
@@ -2061,7 +2061,7 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .lup-look.on .lup-mini{transform:scale(1.06) rotate(-4deg)}
 .lup-look-t{display:grid;justify-items:center;gap:0;min-width:0;line-height:1.2;text-align:center}
 .lup-look-t b{font-size:13px;font-weight:600}
-.lup-sugg{position:absolute;top:-8px;right:-6px;box-shadow:0 0 0 3px var(--surface);display:inline-flex;align-items:center;gap:4px;width:max-content;padding:2px 7px 2px 5px;border-radius:99px;font-size:10.5px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft)}
+.lup-sugg{display:inline-flex;margin-top:3px;align-items:center;gap:4px;width:max-content;padding:2px 7px 2px 5px;border-radius:99px;font-size:10.5px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft)}
 .lup-sugg.pop{animation:popIn .5s var(--ease-spring) both}
 .lup-bg{display:grid;gap:7px}
 .lup-sws{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
@@ -2085,3 +2085,11 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .lup-fit:hover:not(:disabled){transform:rotate(-20deg) scale(1.12);background:var(--accent-soft)}
 .lup-fit:disabled{cursor:default;opacity:.45}
 .lup-fit.on{background:var(--accent-soft);opacity:1}
+/* Cropping needs room: the dialog widens for it, and nothing in the side column may push past it. */
+.modal:has(.lup-crop){max-width:660px}
+.lup-crop{flex-wrap:nowrap}
+@media (max-width:620px){.lup-crop{flex-wrap:wrap;justify-content:center}}
+.lup-zoom input{min-width:0}
+.lup-row{max-width:100%;box-sizing:border-box}
+.modal:has(.lup){transition:max-width .35s var(--ease-out)}
+.lup-zoom input:focus-visible{outline:2px solid var(--accent-line);outline-offset:3px;border-radius:99px}
