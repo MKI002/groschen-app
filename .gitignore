@@ -8,7 +8,8 @@ node_modules/
 frontend/dist/
 backend/groschen/static/
 backend/model/
-data/
+/data/
+/backend/data/
 *.db
 *.db-wal
 *.db-shm
