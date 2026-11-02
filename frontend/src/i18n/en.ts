@@ -672,6 +672,8 @@ export const en = {
   "look.username": "Username {name}",
   "look.language.sub": "Also used for messages from the server",
   "look.version": "Version",
+  "look.licence": "Free software under the AGPL-3.0",
+  "look.source": "Source code",
   "cat.Income": "Income",
   "cat.Salary": "Salary",
   "cat.Interest & dividends": "Interest & dividends",

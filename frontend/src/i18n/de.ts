@@ -674,6 +674,8 @@ export const de: Record<Key, string> = {
   "look.username": "Benutzername {name}",
   "look.language.sub": "Gilt auch für Meldungen vom Server",
   "look.version": "Version",
+  "look.licence": "Freie Software unter der AGPL-3.0",
+  "look.source": "Quellcode",
   "cat.Income": "Einnahmen",
   "cat.Salary": "Gehalt",
   "cat.Interest & dividends": "Zinsen & Dividenden",

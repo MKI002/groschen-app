@@ -1132,7 +1132,11 @@ export default function Settings() {
             />
           </Row>
           <EasterEggs />
-          <Row title={t("look.version")} sub={`Groschen ${data.version}`} />
+          <Row title={t("look.version")} sub={`Groschen ${data.version} · © 2026 MKI002 · ${t("look.licence")}`}>
+            <a className="btn ghost sm" href="https://github.com/MKI002/groschen-app" target="_blank" rel="noopener noreferrer">
+              {t("look.source")}
+            </a>
+          </Row>
         </Card>
       </>
     ),
