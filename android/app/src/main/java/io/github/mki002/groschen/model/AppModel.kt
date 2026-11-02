@@ -240,6 +240,10 @@ class AppModel(
                 }
             } catch (e: ApiException) {
                 formError = e.message
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                formError = s.unexpected
             } finally {
                 busy = false
             }
@@ -274,6 +278,10 @@ class AppModel(
                 }
             } catch (e: ApiException) {
                 if (e.status == 401) loseKey(s.phoneRemoved) else formError = e.message
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                formError = s.unexpected
             } finally {
                 busy = false
             }
