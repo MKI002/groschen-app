@@ -205,7 +205,6 @@ class AndroidPlatform(private val app: Context) : Platform {
                         val r = when (errorCode) {
                             BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED,
                             BiometricPrompt.BIOMETRIC_ERROR_CANCELED,
-                            BiometricPrompt.BIOMETRIC_ERROR_NEGATIVE_BUTTON,
                             -> SignResult.Cancelled
                             else -> SignResult.Failed(errString.toString())
                         }
