@@ -31,7 +31,11 @@ def adb(*args: str, check: bool = True) -> str:
 
 def fail(why: str) -> None:
     shot("failed")
-    print(adb("logcat", "-d", "-t", "300", check=False)[-12000:])
+    print(adb("logcat", "-d", "-t", "120", check=False)[-8000:])
+    pid = adb("shell", "pidof", PACKAGE, check=False).strip()
+    if pid:
+        print("What the app logged:")
+        print(adb("logcat", "-d", f"--pid={pid}", check=False)[-8000:])
     print(adb("logcat", "-d", "-b", "crash", check=False)[-6000:])
     print("On the screen:", " | ".join(t for t in (label(n) for n in nodes()) if t))
     print("On-screen keyboard up:", keyboard_shown())
@@ -145,6 +149,25 @@ def no_trouble(page: str) -> None:
             fail(f'{page}: the page shows "{label(n)}".')
 
 
+def connect(tries: int = 5) -> None:
+    """Taps Connect until the login shows. Right after the emulator starts, its network can need a moment."""
+    for attempt in range(1, tries + 1):
+        tap(lowest(wait_for("Connect")))
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            check_health()
+            texts = [label(n) for n in nodes()]
+            if texts.count("Log in") >= 2:  # the heading and the button
+                return
+            if any("can't be reached" in t for t in texts):
+                break
+            time.sleep(1)
+        print(f"Try {attempt}: the app couldn't reach the demo server yet.")
+        print(adb("shell", "ping", "-c", "1", "-W", "2", SERVER.split(":")[0], check=False).strip())
+        time.sleep(5)
+    fail(f"The app couldn't reach the demo server in {tries} tries.")
+
+
 def shot(name: str) -> None:
     path = Path(sys.argv[2]) / f"{name}.png"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,9 +192,7 @@ def main() -> None:
     wait_for("Connect to your Groschen")
     shot("1-connect")
     type_into(0, SERVER)
-    tap(lowest(wait_for("Connect")))
-
-    wait_for("Log in")
+    connect()
     shot("2-login")
     type_into(0, USER)
     type_into(1, PASSWORD)
