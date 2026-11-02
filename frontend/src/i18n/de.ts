@@ -319,7 +319,7 @@ export const de: Record<Key, string> = {
   "logo.letterSub": "ohne Logo",
   "logo.uploadSub": "klicken, ziehen, einfügen",
   "logo.useLetter": "Nur Buchstabe",
-  "logo.reset": "Wieder automatisch",
+  "logo.reset": "Automatisch",
   "logo.search": "{n} eingebaute Logos durchsuchen",
   "logo.none": "Kein eingebautes Logo mit diesem Namen.",
   "logo.failed": "Das hat nicht geklappt. Versuch es mit einem PNG- oder JPEG-Bild.",
