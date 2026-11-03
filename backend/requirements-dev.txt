@@ -1,5 +1,5 @@
 # Only for running the tests; not part of the image.
-pytest==9.1.1
+pytest==9.2.0
 httpx==0.28.1
-ruff==0.16.9
-onnx==1.23.0
+ruff==0.17.3
+onnx==1.23.2
