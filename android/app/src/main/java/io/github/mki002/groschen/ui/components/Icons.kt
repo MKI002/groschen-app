@@ -81,13 +81,13 @@ enum class Ico(internal vararg val parts: Part) {
     Tag(s("M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"), f(circle(8f, 8f, 1.5f))),
     Clock(s(circle(12f, 12f, 9f)), s("M12 7v5l3.2 2")),
     Server(s(rrect(3.5f, 4f, 17f, 7f, 2f)), s(rrect(3.5f, 13f, 17f, 7f, 2f)), f(circle(7.5f, 7.5f, 1.1f)), f(circle(7.5f, 16.5f, 1.1f))),
+    // Ridges around one centre (12, 12), so the print sits even in its circle.
     Fingerprint(
-        s("M6.2 6.4A8 8 0 0 1 20 12v1.5"),
-        s("M4.2 9.6A8 8 0 0 0 4 12v2.5"),
-        s("M8 12a4 4 0 0 1 8 0v2c0 2.4-.5 4.6-1.4 6.4"),
-        s("M12 12v2.5c0 2.6-.8 5-2.1 7"),
-        s("M8.1 16.5c-.3 1.6-.9 3-1.8 4.3"),
-        s("M17.6 18.5c-.2 1-.5 1.9-.8 2.8"),
+        s("M3.5 9a9 9 0 0 1 17 0"),
+        s("M6 17.5V12a6 6 0 0 1 12 0v1.5"),
+        s("M18 16.5c0 1.6-.3 3.1-.8 4.5"),
+        s("M9 16.5V12a3 3 0 0 1 6 0v2.5c0 2.3-.4 4.4-1.2 6.4"),
+        s("M12 12v3c0 2.3-.6 4.5-1.7 6.5"),
     ),
     Cloud(s("M7 18.5h10.5a4 4 0 0 0 .6-8 6 6 0 0 0-11.6 1.3A3.4 3.4 0 0 0 7 18.5z")),
 }
