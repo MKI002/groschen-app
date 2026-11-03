@@ -1,7 +1,9 @@
 # One-off: after the history was rewritten to remove personal data (2026-11-03), the Android
 # release tags still pointed at the old commits. Started by hand (Actions → "Move release tags"
-# → Run workflow), it moves each tag to the same commit in the new history, so the releases and
-# their APKs stay as they are. Safe to run again. Delete this file afterwards.
+# → Run workflow). The workflow token may neither move a tag in place nor create one on an old
+# commit, so it removes the old tags and puts the newest release's tag back on main (the app is
+# unchanged since). Older releases keep their APKs but have no tag any more. Safe to run again.
+# Delete this file afterwards.
 name: Move release tags
 
 on:
@@ -20,28 +22,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          # Oldest first, so a surprise stops at the least important release.
-          # Moving a tag in place is refused for this token, so each tag is removed and its release
-          # puts it back on the new commit (a release creates its missing tag at target_commitish).
-          failed=0
-          while read -r tag sha; do
-            [ -n "$tag" ] || continue
-            now=$(gh api "repos/$REPO/git/ref/tags/$tag" --jq .object.sha 2>/dev/null || true)
-            if [ "$now" = "$sha" ]; then echo "$tag already at $sha"; continue; fi
-            id=$(gh api "repos/$REPO/releases/tags/$tag" --jq .id)
-            gh api -X DELETE "repos/$REPO/git/refs/tags/$tag"
-            gh api -X PATCH "repos/$REPO/releases/$id" -f tag_name="$tag" -f target_commitish="$sha" -F draft=false --jq '.tag_name + " released"'
-            got=$(gh api "repos/$REPO/git/ref/tags/$tag" --jq .object.sha 2>/dev/null || true)
-            if [ "$got" = "$sha" ]; then echo "$tag -> $sha"; else echo "::error::$tag is at '$got', expected $sha"; failed=1; fi
-          done <<'TAGS'
-          android-v1.0.6 28a33c4e0fd440ae2c42bed6523affd35c50129d
-          android-v1.0.7 eac94cbafc7389a84f470753224dbe2988b2e34e
-          android-v1.0.10 7f575d4dc07899e881f76a1cfbd988655e1d6ff9
-          android-v1.0.18 255525cc4a9734304c87ec5856ac3a1dc0b3b590
-          android-v1.0.22 fe7fb89d5b0caa1173f3d3bbd51bb977fb0399e0
-          android-v1.0.25 2044b26e696b3e7b36a0a9e6da45ff4704f54935
-          android-v1.0.28 7807b25065d264455b21aff3e4bcced35e267cea
-          android-v1.0.31 53d1dceae0485f6ea28e44ec31585d544aec0de4
-          android-v1.0.33 f9881f008d0f215e0a38b45cd00ae69d3d535d14
-          TAGS
-          exit $failed
+          set -u
+          latest=android-v1.0.33
+          main=$(gh api "repos/$REPO/commits/main" --jq .sha)
+          release_id() { gh api "repos/$REPO/releases?per_page=100" --jq ".[] | select(.tag_name == \"$1\") | .id"; }
+          # First a harmless try on the oldest release (its tag is already gone): if a release may not
+          # put its tag on main either, stop here before any other tag is touched.
+          probe=android-v1.0.6
+          if ! gh api "repos/$REPO/git/ref/tags/$probe" >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$REPO/releases/$(release_id $probe)" -f tag_name="$probe" -f target_commitish="$main" --jq '"probe ok: " + .tag_name'
+            gh api -X DELETE "repos/$REPO/git/refs/tags/$probe" && echo "$probe: probe tag removed again"
+          fi
+          for tag in android-v1.0.6 android-v1.0.7 android-v1.0.10 android-v1.0.18 android-v1.0.22 \
+                     android-v1.0.25 android-v1.0.28 android-v1.0.31 android-v1.0.33; do
+            if gh api "repos/$REPO/git/ref/tags/$tag" >/dev/null 2>&1; then
+              gh api -X DELETE "repos/$REPO/git/refs/tags/$tag" && echo "$tag: old tag removed"
+            else
+              echo "$tag: no tag"
+            fi
+          done
+          # The newest release gets its tag back, on main.
+          gh api -X PATCH "repos/$REPO/releases/$(release_id $latest)" -f tag_name="$latest" -f target_commitish="$main" \
+            -F draft=false -f make_latest=true --jq '.tag_name + " published: " + .html_url'
+          got=$(gh api "repos/$REPO/git/ref/tags/$latest" --jq .object.sha)
+          echo "$latest -> $got (main is $main)"
+          [ "$got" = "$main" ]
