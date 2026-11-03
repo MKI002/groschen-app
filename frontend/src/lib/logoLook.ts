@@ -69,44 +69,58 @@ export function analyse(d: Uint8ClampedArray, w: number, h: number): Look {
     for (let x = 0; x < w; x++) if (x < band || y < band || x >= w - band || y >= h - band) border.push((y * w + x) * 4);
 
   const solid = border.filter((i) => d[i + 3] > 200);
-  const clear = solid.length < border.length / 2;
-  const edge = clear ? null : median(solid.map(px));
-  const plain = edge
-    ? solid.filter((i) => dist(px(i), edge) < 40).length >= border.length * 0.85
-    : border.filter((i) => d[i + 3] < 40).length >= border.length * 0.85;
-  const palette = paletteOf(d, edge);
-  if (!plain) return { edge, plain, box: null, ink: null, palette };
+  const seeThrough = border.filter((i) => d[i + 3] < 40).length;
 
-  // The logo is whatever differs from the background; its "core" is what clearly does
-  // (soft, half-blended edges left out), which tells whether it is one colour.
-  let x0 = w;
-  let y0 = h;
-  let x1 = -1;
-  let y1 = -1;
-  const core: RGB[] = [];
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4;
-      const a = d[i + 3];
-      const off = edge ? dist(px(i), edge) : 0;
-      if (a <= 50 || (edge && off <= 48)) continue;
-      if (x < x0) x0 = x;
-      if (x > x1) x1 = x;
-      if (y < y0) y0 = y;
-      if (y > y1) y1 = y;
-      if (a > 220 && (!edge || off > 100)) core.push(px(i));
+  // Reads the picture as a logo on `edge` (null: on see-through).
+  const readOn = (edge: RGB | null): Look => {
+    const plain = edge ? solid.filter((i) => dist(px(i), edge) < 40).length >= border.length * 0.85 : seeThrough >= border.length * 0.85;
+    const palette = paletteOf(d, edge);
+    if (!plain && edge) return { edge, plain, box: null, ink: null, palette };
+
+    // The logo is whatever differs from the background; its "core" is what clearly does
+    // (soft, half-blended edges left out), which tells whether it is one colour.
+    let x0 = w;
+    let y0 = h;
+    let x1 = -1;
+    let y1 = -1;
+    const core: RGB[] = [];
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const a = d[i + 3];
+        const off = edge ? dist(px(i), edge) : 0;
+        if (a <= 50 || (edge && off <= 48)) continue;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+        if (a > 220 && (!edge || off > 100)) core.push(px(i));
+      }
+    if (x1 < 0) return { edge, plain, box: null, ink: null, palette };
+    const box = { x: x0 / w, y: y0 / h, w: (x1 + 1 - x0) / w, h: (y1 + 1 - y0) / h };
+
+    let ink: RGB | null = null;
+    const onLight = !edge || luminance(edge) > 0.7;
+    if (onLight && core.length >= w * h * 0.004) {
+      const m = median(core);
+      const same = core.filter((p) => dist(p, m) < 70).length / core.length;
+      if (same >= 0.9 && luminance(m) < 0.85 && (!edge || dist(m, edge) > 120)) ink = m;
     }
-  if (x1 < 0) return { edge, plain, box: null, ink: null, palette };
-  const box = { x: x0 / w, y: y0 / h, w: (x1 + 1 - x0) / w, h: (y1 + 1 - y0) / h };
+    // See-through and cut tight (the logo runs into the border): it can still be extended
+    // when it is one coloured shape. Anything else (a photo cut out round, say) stays as it is.
+    if (!plain && !ink) return { edge, plain, box: null, ink: null, palette };
+    return { edge, plain: true, box, ink, palette };
+  };
 
-  let ink: RGB | null = null;
-  const onLight = !edge || luminance(edge) > 0.7;
-  if (onLight && core.length >= w * h * 0.004) {
-    const m = median(core);
-    const same = core.filter((p) => dist(p, m) < 70).length / core.length;
-    if (same >= 0.9 && luminance(m) < 0.85 && (!edge || dist(m, edge) > 120)) ink = m;
+  const opaque = solid.length >= border.length / 2;
+  // A wordmark cut out tight, its letters running from edge to edge, covers much of the
+  // border; when the rest is see-through and it turns out to be one colour, it is a logo on
+  // see-through (not one on its own colour, which would leave nothing to see).
+  if (opaque && seeThrough >= border.length * 0.25) {
+    const tight = readOn(null);
+    if (tight.ink) return tight;
   }
-  return { edge, plain, box, ink, palette };
+  return readOn(opaque ? median(solid.map(px)) : null);
 }
 
 /** The logo the other way round: its shape in `glyph` colour on see-through, pixels as `d`. */
