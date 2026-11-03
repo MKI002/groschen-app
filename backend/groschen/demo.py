@@ -272,6 +272,16 @@ def build(today: dt.date | None = None, months: int = 26, seed: int = 42) -> dic
         giro.append(_tx(d, -24.99, "FitX Deutschland GmbH", "Lastschrift", "Mitgliedsbeitrag alle 4 Wochen"))
         d += dt.timedelta(days=28)
 
+    # Kleingeld Plus for the last few months: every card payment rounded up to the next euro, the
+    # cents moved from the Girokonto to the Extra-Konto the same day.
+    since = (today.replace(day=1) - dt.timedelta(days=62)).replace(day=1).isoformat()
+    for t in [t for t in giro if t["date"] >= since and t["purpose"].startswith("VISA")]:
+        cents = round(math.ceil(-t["amount"] - 1e-9) + t["amount"], 2)
+        if cents > 0:
+            d = dt.date.fromisoformat(t["date"])
+            giro.append(_tx(d, -cents, "Kleingeld Plus - Sparen", "Ueberweisung", "Kleingeld Plus Aufrundung", EXTRA_IBAN))
+            extra.append(_tx(d, cents, "Kleingeld Plus - Sparen", "Gutschrift", "Kleingeld Plus Aufrundung", GIRO_IBAN))
+
     giro.sort(key=lambda t: t["date"])
     extra.sort(key=lambda t: t["date"])
     holdings = []
