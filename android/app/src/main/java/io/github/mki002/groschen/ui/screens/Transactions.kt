@@ -1,5 +1,12 @@
 package io.github.mki002.groschen.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,18 +33,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mki002.groschen.data.Category
 import io.github.mki002.groschen.data.Transaction
+import io.github.mki002.groschen.data.TxEntry
+import io.github.mki002.groschen.data.dayEntries
 import io.github.mki002.groschen.i18n.categoryName
 import io.github.mki002.groschen.model.AppModel
 import io.github.mki002.groschen.model.Sheet
@@ -62,6 +76,7 @@ import io.github.mki002.groschen.ui.components.Tone
 import io.github.mki002.groschen.ui.components.veilText
 import io.github.mki002.groschen.ui.theme.G
 import io.github.mki002.groschen.ui.theme.Palette
+import kotlin.math.abs
 
 val TX_FILTERS = listOf("all", "review", "unc", "income")
 
@@ -69,7 +84,17 @@ val TX_FILTERS = listOf("all", "review", "unc", "income")
 fun TransactionsPage(model: AppModel, list: LazyListState) {
     val s = LocalStrings.current
     val fmt = LocalFmt.current
-    val days = remember(model.transactions.toList()) { model.transactions.groupBy { it.date.take(10) }.toList() }
+    // Moves between own accounts show once with both sides; without a search or filter, a day's
+    // round-ups (and several moves of one payee) fold into one line that opens up.
+    val fold = model.txFilter == "all" && model.txQuery.isBlank()
+    val days = remember(model.transactions.toList(), fold) {
+        val listed = model.transactions.associateBy { it.id }
+        model.transactions
+            .groupBy { it.date.take(10) }
+            .map { (day, txs) -> day to dayEntries(txs, listed, fold) }
+            .filter { it.second.isNotEmpty() }
+    }
+    val open = remember { mutableStateListOf<String>() }
     LazyColumn(state = list, contentPadding = PagePadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             PageHeader(null, s.tabTransactions, sub = if (model.txTotal > 0) s.bookingCount(model.txTotal) else null)
@@ -120,15 +145,32 @@ fun TransactionsPage(model: AppModel, list: LazyListState) {
             }
             return@LazyColumn
         }
-        items(days, key = { it.first }) { (day, txs) ->
+        items(days, key = { it.first }) { (day, entries) ->
             Column {
                 Row(Modifier.padding(start = 4.dp, end = 4.dp, bottom = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(fmt.dayHeader(day), style = G.type.bodyStrong.copy(fontSize = G.type.small.fontSize), color = Palette.ink2)
                 }
                 GCard(padding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) {
-                    txs.forEachIndexed { i, tx ->
+                    entries.forEachIndexed { i, entry ->
                         if (i > 0) Hairline()
-                        TxRow(tx) { model.open(Sheet.Tx(tx)) }
+                        when (entry) {
+                            is TxEntry.One -> TxRow(entry.item.tx, paired = entry.item.other != null) { model.open(Sheet.Tx(entry.item.tx)) }
+                            is TxEntry.Fold -> {
+                                val isOpen = entry.key in open
+                                FoldRow(entry, isOpen) { if (isOpen) open.remove(entry.key) else open.add(entry.key) }
+                                AnimatedVisibility(
+                                    isOpen,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut(),
+                                ) {
+                                    Column {
+                                        for (item in entry.items) {
+                                            TxRow(item.tx, paired = item.other != null, inner = true) { model.open(Sheet.Tx(item.tx)) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -144,40 +186,116 @@ fun TransactionsPage(model: AppModel, list: LazyListState) {
     }
 }
 
+/**
+ * One booking in a list. Money that only moved between own accounts is neither spent nor earned:
+ * it shows in grey without a sign and says the way it went ("Girokonto → Extra-Konto"); with both
+ * of its sides in one row ([paired]) it gets the two arrows instead of the payee's badge. An
+ * [inner] row, one of a folded line, is smaller and leaves out what the line already says.
+ */
 @Composable
-fun TxRow(tx: Transaction, onClick: () -> Unit) {
+fun TxRow(tx: Transaction, paired: Boolean = false, inner: Boolean = false, onClick: () -> Unit) {
     val s = LocalStrings.current
     val fmt = LocalFmt.current
     val color = Palette.category(tx.categoryColor)
+    val moved = tx.move != null
+    val badge = if (inner) 30.dp else 38.dp
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = if (inner) 16.dp else 0.dp, top = if (inner) 8.dp else 12.dp, bottom = if (inner) 8.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MerchantBadge(tx.title, if (tx.categoryId == null) Palette.muted else color)
+        if (paired) {
+            MoveBadge(Ico.Swap, badge)
+        } else {
+            MerchantBadge(tx.title, if (tx.categoryId == null) Palette.muted else color, size = badge)
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(veilText(tx.title, fmt.hidden), style = G.type.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (tx.needsReview == 1) {
-                    Pill(s.checkThis, Tone.Accent)
-                    Spacer(Modifier.width(6.dp))
+            Text(
+                veilText(tx.title, fmt.hidden),
+                style = G.type.bodyStrong,
+                color = if (moved) Palette.ink2 else G.type.bodyStrong.color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!inner || tx.needsReview == 1) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (tx.needsReview == 1) {
+                        Pill(s.checkThis, Tone.Accent)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    if (!inner) {
+                        Text(
+                            if (moved) tx.route else tx.category?.let { categoryName(it, fmt.lang) } ?: s.noCategory,
+                            style = G.type.small,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
-                Text(
-                    tx.category?.let { categoryName(it, fmt.lang) } ?: s.noCategory,
-                    style = G.type.small,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
         }
         Spacer(Modifier.width(10.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Money(tx.amount, G.type.number, color = if (tx.amount > 0) Palette.good else Palette.ink, signed = true)
+            if (moved) {
+                Money(abs(tx.amount), G.type.number, color = Palette.muted)
+            } else {
+                Money(tx.amount, G.type.number, color = if (tx.amount > 0) Palette.good else Palette.ink, signed = true)
+            }
             val orig = tx.origAmount
             if (orig != null && tx.currency != null && tx.currency != fmt.currency) {
-                Money(orig, G.type.small, currency = tx.currency, signed = true)
+                Money(if (moved) abs(orig) else orig, G.type.small, currency = tx.currency, signed = !moved)
             }
         }
+    }
+}
+
+/** A day's round-ups (or moves of one payee) in one quiet line; a tap shows each of them. */
+@Composable
+private fun FoldRow(fold: TxEntry.Fold, open: Boolean, onToggle: () -> Unit) {
+    val s = LocalStrings.current
+    val fmt = LocalFmt.current
+    val first = fold.first
+    val turn by animateFloatAsState(if (open) 180f else 0f, label = "fold")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClickLabel = if (open) s.close else s.show) { onToggle() }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (fold.roundup) MoveBadge(Ico.Coin) else MerchantBadge(first.title, Palette.category(first.categoryColor))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(veilText(first.title, fmt.hidden), style = G.type.bodyStrong, color = Palette.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val n = fold.items.size
+                Text(
+                    "${if (fold.roundup) s.roundUps(n) else s.bookingCount(n)} · ${first.route}",
+                    style = G.type.small,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(Modifier.width(4.dp))
+                GIcon(Ico.ChevDown, Modifier.rotate(turn), size = 14.dp, tint = Palette.muted)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Money(fold.sum, G.type.number, color = Palette.muted)
+    }
+}
+
+/** A quiet round badge with an icon, for money that only moved. */
+@Composable
+private fun MoveBadge(icon: Ico, size: Dp = 38.dp) {
+    Box(
+        Modifier.size(size).clip(CircleShape).background(Palette.ink.copy(alpha = 0.07f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        GIcon(icon, size = size * 0.45f, tint = Palette.ink2)
     }
 }
 
@@ -197,10 +315,24 @@ fun ColumnScope.TransactionSheet(model: AppModel, tx: Transaction) {
             }
         }
         Spacer(Modifier.height(18.dp))
-        Money(tx.amount, G.type.big, color = if (tx.amount > 0) Palette.good else Palette.ink, signed = true)
+        val moved = tx.move != null
+        if (moved) {
+            Money(abs(tx.amount), G.type.big, color = Palette.ink2)
+        } else {
+            Money(tx.amount, G.type.big, color = if (tx.amount > 0) Palette.good else Palette.ink, signed = true)
+        }
         val orig = tx.origAmount
         if (orig != null && tx.currency != null && tx.currency != fmt.currency) {
-            Money(orig, G.type.small, currency = tx.currency, signed = true)
+            Money(if (moved) abs(orig) else orig, G.type.small, currency = tx.currency, signed = !moved)
+        }
+        if (moved) {
+            // Money moved between own accounts: the way it went, and that it counts for nothing.
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GIcon(Ico.Swap, size = 16.dp, tint = Palette.ink2)
+                Spacer(Modifier.width(8.dp))
+                Text(s.movedWhy(tx.route), style = G.type.small, color = Palette.ink2)
+            }
         }
         Spacer(Modifier.height(18.dp))
 

@@ -73,6 +73,7 @@ enum class Ico(internal vararg val parts: Part) {
     Etf(s("M4 20h16M6 16V11M10 16V7M14 16v-5M18 16V5")),
     Trend(s("M3 17l6-6 4 4 8-8M15 7h6v6")),
     Coin(s(circle(12f, 12f, 9f)), s("M14.8 9.2a3.6 3.6 0 1 0 0 5.6M8 11h5M8 13.2h5")),
+    Swap(s("M5 8h13M15 5l3 3-3 3M19 16H6M9 13l-3 3 3 3")),
     Calendar(s(rrect(3.5f, 5f, 17f, 15.5f, 2.5f)), s("M3.5 10h17M8 3v4M16 3v4"), f("M7 13.5h2.5V16H7zM11 13.5h2.5V16H11z")),
     Lock(s(rrect(4f, 10f, 16f, 11f, 2.5f)), s("M8 10V7a4 4 0 0 1 8 0v3")),
     Globe(s(circle(12f, 12f, 9f)), s("M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z")),

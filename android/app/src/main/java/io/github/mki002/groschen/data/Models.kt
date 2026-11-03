@@ -177,9 +177,22 @@ data class Transaction(
     @SerialName("category_color") val categoryColor: String? = null,
     val merchant: String? = null,
     val detail: String? = null,
+    val roundup: Boolean = false,
+    val move: Move? = null,
 ) {
     val title: String get() = merchant?.takeIf { it.isNotBlank() } ?: counterparty?.takeIf { it.isNotBlank() } ?: purpose.orEmpty()
+
+    /** Where money that only moved went: "Girokonto → Extra-Konto", the payee where the account isn't known. */
+    val route: String get() = move?.let { "${it.from ?: title} → ${it.to ?: title}" }.orEmpty()
 }
+
+/**
+ * Money that only moved between the user's own accounts (savings, the depot, round-ups): neither
+ * spent nor earned. The account names (null where the server doesn't know the account) and the
+ * booking on the other account when both sides are there.
+ */
+@Serializable
+data class Move(val from: String? = null, val to: String? = null, val mirror: Int? = null)
 
 @Serializable
 data class TransactionPage(
