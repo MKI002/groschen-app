@@ -316,3 +316,22 @@ data class Job(
     val error: String? = null,
     val tan: TanRequest? = null,
 )
+
+/**
+ * Which logo a merchant gets, as the web app shows it: a built-in brand logo (its drawing in
+ * [ink] on a disc in [hex]), a picture of the user's own ([key], changing [v] with each new
+ * picture), or the letter.
+ */
+@Serializable
+data class MerchantLogo(
+    val kind: String = "letter",
+    val slug: String? = null,
+    val title: String? = null,
+    val hex: String? = null,
+    val ink: String? = null,
+    val dark: Boolean = false,
+    /** The drawing as SVG path data, on a 24 x 24 grid. */
+    val path: String? = null,
+    val key: String? = null,
+    val v: String? = null,
+)

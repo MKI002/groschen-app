@@ -85,6 +85,9 @@ interface Platform {
     /** A picture the bank sends with a TAN request (photoTAN, chipTAN QR). */
     fun decodeImage(bytes: ByteArray): ImageBitmap?
 
+    /** A picture read at a fraction of its size, so its long side is at most about twice [maxSide]. */
+    fun decodeSmallImage(bytes: ByteArray, maxSide: Int): ImageBitmap?
+
     // --- updates from GitHub Releases -----------------------------------------------------
 
     /** The installed version's build number, the same as in the release's name. */

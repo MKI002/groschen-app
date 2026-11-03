@@ -106,6 +106,49 @@ class ApiTest {
     }
 
     @Test
+    fun `merchant logos and pictures`() {
+        server.enqueue(
+            json(
+                """{"Netflix":{"kind":"brand","slug":"netflix","title":"Netflix","hex":"#E50914","ink":"#FFFFFF","path":"M 5 0 z"},""" +
+                    """"LINSENWERK":{"kind":"image","key":"linsenwerk","v":"2026-11-03T07:00:00"},"Huber":{"kind":"letter"}}""",
+            ),
+        )
+        val picture = ByteArray(40_000) { (it % 251).toByte() }
+        server.enqueue(
+            MockResponse.Builder().code(200).body(okio.Buffer().write(picture)).addHeader("Content-Type", "image/png")
+                .throttleBody(4096, 5, TimeUnit.MILLISECONDS).build(),
+        )
+        server.enqueue(json("""{"detail":"Not found."}""", 404))
+        val client = OkHttpClient.Builder().socketFactory(NoReadsOn("screen")).build()
+        val api = GroschenApi(server.url("/"), "Groschen-Android/test", { "de" }, { texts }, client)
+        api.token = "abc"
+        val screen = Executors.newSingleThreadExecutor { Thread(it, "screen") }
+        try {
+            runBlocking {
+                withContext(screen.asCoroutineDispatcher()) {
+                    val logos = api.logos(listOf("Netflix", "LINSENWERK", "Huber"))
+                    assertEquals("netflix", logos.getValue("Netflix").slug)
+                    assertEquals("#E50914", logos.getValue("Netflix").hex)
+                    assertEquals("linsenwerk", logos.getValue("LINSENWERK").key)
+                    assertEquals("letter", logos.getValue("Huber").kind)
+                    assertTrue(api.logoImage("linsenwerk", "2026-11-03T07:00:00").contentEquals(picture))
+                    assertEquals(404, assertFailsWith<ApiException> { api.logoImage("gone", "1") }.status)
+                }
+            }
+        } finally {
+            screen.shutdown()
+        }
+        val ask = server.takeRequest()
+        assertEquals("/api/logos/resolve", ask.url.encodedPath)
+        assertEquals("1", ask.headers["X-Groschen"])
+        assertEquals("""{"names":["Netflix","LINSENWERK","Huber"]}""", ask.body!!.utf8())
+        val image = server.takeRequest()
+        assertEquals("/api/logos/linsenwerk/image", image.url.encodedPath)
+        assertEquals("2026-11-03T07:00:00", image.url.queryParameter("v"))
+        assertEquals("groschen_session=abc", image.headers["Cookie"])
+    }
+
+    @Test
     fun `no server means unreachable`() = runBlocking {
         val api = api()
         server.close()

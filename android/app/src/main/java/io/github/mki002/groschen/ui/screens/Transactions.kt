@@ -50,10 +50,10 @@ import io.github.mki002.groschen.ui.components.GField
 import io.github.mki002.groschen.ui.components.GIcon
 import io.github.mki002.groschen.ui.components.Hairline
 import io.github.mki002.groschen.ui.components.Ico
-import io.github.mki002.groschen.ui.components.Initial
 import io.github.mki002.groschen.ui.components.Label
 import io.github.mki002.groschen.ui.components.LocalFmt
 import io.github.mki002.groschen.ui.components.LocalStrings
+import io.github.mki002.groschen.ui.components.MerchantBadge
 import io.github.mki002.groschen.ui.components.Money
 import io.github.mki002.groschen.ui.components.Pill
 import io.github.mki002.groschen.ui.components.Placeholder
@@ -153,7 +153,7 @@ fun TxRow(tx: Transaction, onClick: () -> Unit) {
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Initial(tx.title, if (tx.categoryId == null) Palette.muted else color)
+        MerchantBadge(tx.title, if (tx.categoryId == null) Palette.muted else color)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(veilText(tx.title, fmt.hidden), style = G.type.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -189,7 +189,7 @@ fun ColumnScope.TransactionSheet(model: AppModel, tx: Transaction) {
     var picking by rememberSaveable(tx.id) { mutableStateOf(false) }
     SheetBody(Modifier.weight(1f, fill = false).verticalScrollable()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Initial(tx.title, Palette.category(tx.categoryColor), size = 46.dp)
+            MerchantBadge(tx.title, Palette.category(tx.categoryColor), size = 46.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(veilText(tx.title, fmt.hidden), style = G.type.heading, maxLines = 2, overflow = TextOverflow.Ellipsis)
