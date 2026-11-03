@@ -2,10 +2,11 @@
 user's own choices (a picture, another built-in logo, or the letter) are kept here. The phone app
 asks /logos/resolve which logo each merchant gets, since it has no copy of the built-in ones."""
 
+import hashlib
 import re
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -31,6 +32,15 @@ def _key(key: str) -> str:
     return key
 
 
+def _name(name: str | None) -> str | None:
+    name = " ".join((name or "").split())[:200]
+    return name or None
+
+
+def _hash(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
 def _mime(raw: bytes) -> str | None:
     for magic, mime in MAGIC:
         if raw.startswith(magic):
@@ -42,9 +52,17 @@ def _mime(raw: bytes) -> str | None:
 
 @router.get("/logos")
 def list_logos():
+    """Every choice, with the merchant's name and, for pictures, a fingerprint: the logo dialog
+    offers pictures already given to one merchant for others ("Cineplex" for "Cineplex Neumarkt")."""
     with db.session() as conn:
-        rows = conn.execute("SELECT key, kind, slug, updated_at FROM vendor_logos").fetchall()
-    return {r["key"]: {"kind": r["kind"], "slug": r["slug"], "v": r["updated_at"]} for r in rows}
+        # Pictures from before fingerprints existed get theirs now, once.
+        for r in conn.execute("SELECT key, image FROM vendor_logos WHERE kind = 'image' AND hash IS NULL").fetchall():
+            conn.execute("UPDATE vendor_logos SET hash = ? WHERE key = ?", (_hash(r["image"] or b""), r["key"]))
+        rows = conn.execute("SELECT key, kind, slug, updated_at, name, hash FROM vendor_logos").fetchall()
+    return {
+        r["key"]: {"kind": r["kind"], "slug": r["slug"], "v": r["updated_at"], "name": r["name"], "hash": r["hash"]}
+        for r in rows
+    }
 
 
 class Names(BaseModel):
@@ -74,25 +92,44 @@ def resolve(body: Names):
 
 
 class Choice(BaseModel):
-    kind: Literal["brand", "letter"]
+    kind: Literal["brand", "letter", "image"]
     slug: str | None = Field(default=None, max_length=80)
+    # kind image: the merchant whose picture this one gets as well
+    source: str | None = Field(default=None, max_length=120)
+    name: str | None = Field(default=None, max_length=200)
 
 
 @router.put("/logos/{key}")
 def choose(key: str, body: Choice):
     key = _key(key)
+    name = _name(body.name)
+    if body.kind == "image":
+        source = _key(body.source or "")
+        with db.session() as conn:
+            row = conn.execute(
+                "SELECT mime, image, hash FROM vendor_logos WHERE key = ? AND kind = 'image'", (source,)
+            ).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail=i18n.t("Not found."))
+            conn.execute(
+                "INSERT OR REPLACE INTO vendor_logos (key, kind, slug, mime, image, updated_at, name, hash) "
+                "VALUES (?, 'image', NULL, ?, ?, ?, ?, ?)",
+                (key, row["mime"], row["image"], db.now_iso(), name, row["hash"] or _hash(row["image"] or b"")),
+            )
+        return {"ok": True}
     if body.kind == "brand" and not (body.slug and SLUG.match(body.slug)):
         raise HTTPException(status_code=400, detail=i18n.t("Unknown logo."))
     with db.session() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO vendor_logos (key, kind, slug, mime, image, updated_at) VALUES (?, ?, ?, NULL, NULL, ?)",
-            (key, body.kind, body.slug if body.kind == "brand" else None, db.now_iso()),
+            "INSERT OR REPLACE INTO vendor_logos (key, kind, slug, mime, image, updated_at, name, hash) "
+            "VALUES (?, ?, ?, NULL, NULL, ?, ?, NULL)",
+            (key, body.kind, body.slug if body.kind == "brand" else None, db.now_iso(), name),
         )
     return {"ok": True}
 
 
 @router.post("/logos/{key}/image")
-async def upload(key: str, file: UploadFile = File(...)):
+async def upload(key: str, file: UploadFile = File(...), name: str | None = Form(None, max_length=200)):
     key = _key(key)
     raw = await file.read(MAX_IMAGE + 1)
     if len(raw) > MAX_IMAGE:
@@ -102,9 +139,9 @@ async def upload(key: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=415, detail=i18n.t("Use a PNG, JPEG, WebP or GIF picture."))
     with db.session() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO vendor_logos (key, kind, slug, mime, image, updated_at) "
-            "VALUES (?, 'image', NULL, ?, ?, ?)",
-            (key, mime, raw, db.now_iso()),
+            "INSERT OR REPLACE INTO vendor_logos (key, kind, slug, mime, image, updated_at, name, hash) "
+            "VALUES (?, 'image', NULL, ?, ?, ?, ?, ?)",
+            (key, mime, raw, db.now_iso(), _name(name), _hash(raw)),
         )
     return {"ok": True}
 

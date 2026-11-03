@@ -116,3 +116,37 @@ def test_drawings_reach_the_phone_with_every_part_spaced():
     # An arc's two flags may run into the next number in SVG; spelled out, any phone reads it.
     assert brand_logos.spaced("M5.398 0a1 1 0 01-2.5.5zm1,2l-1-1") == "M 5.398 0 a 1 1 0 0 1 -2.5 .5 z m 1 2 l -1 -1"
     assert brand_logos.spaced("M1 1 x") is None
+
+
+def test_a_picture_given_to_one_merchant_can_be_reused_for_another(user):  # noqa: F811
+    picture = {"file": ("l.png", PNG, "image/png")}
+    r = user.post("/api/logos/cineplex/image", files=picture, data={"name": "  Cineplex  "}, headers=H)
+    assert r.status_code == 200
+    listed = user.get("/api/logos").json()["cineplex"]
+    assert listed["name"] == "Cineplex" and len(listed["hash"]) == 16
+
+    reuse = {"kind": "image", "source": "cineplex", "name": "Cineplex Neumarkt"}
+    r = user.put("/api/logos/cineplexneumarkt", json=reuse, headers=H)
+    assert r.status_code == 200
+    copy = user.get("/api/logos").json()["cineplexneumarkt"]
+    assert copy["kind"] == "image" and copy["name"] == "Cineplex Neumarkt" and copy["hash"] == listed["hash"]
+    assert user.get("/api/logos/cineplexneumarkt/image").content == PNG
+    # The copy stays when the first merchant gets another logo.
+    assert user.put("/api/logos/cineplex", json={"kind": "letter", "name": "Cineplex"}, headers=H).status_code == 200
+    assert user.get("/api/logos/cineplexneumarkt/image").content == PNG
+
+    assert user.put("/api/logos/kino", json={"kind": "image", "source": "cineplex"}, headers=H).status_code == 404
+    assert user.put("/api/logos/kino", json={"kind": "image", "source": "../x"}, headers=H).status_code == 400
+
+
+def test_pictures_from_before_fingerprints_get_one(user):  # noqa: F811
+    from groschen import db
+
+    with db.session() as conn:
+        conn.execute(
+            "INSERT INTO vendor_logos (key, kind, mime, image, updated_at) "
+            "VALUES ('alt', 'image', 'image/png', ?, '2026-01-01')",
+            (PNG,),
+        )
+    got = user.get("/api/logos").json()["alt"]
+    assert got["name"] is None and len(got["hash"]) == 16

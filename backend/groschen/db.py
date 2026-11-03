@@ -299,7 +299,9 @@ CREATE TABLE IF NOT EXISTS vendor_logos (
     slug TEXT,           -- the built-in logo, for kind brand
     mime TEXT,           -- for kind image
     image BLOB,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    name TEXT,           -- the merchant as shown when the choice was made, for finding it again
+    hash TEXT            -- a fingerprint of the picture, so the same picture is offered once
 );
 
 CREATE TABLE IF NOT EXISTS netlog (
@@ -346,6 +348,7 @@ ADDED_COLUMNS = {
     "transactions": {"orig_amount": "REAL", "fx_rate": "REAL"},
     "accounts": {"orig_balance": "REAL", "fx_ok": "INTEGER NOT NULL DEFAULT 1"},
     "balance_history": {"orig_balance": "REAL"},
+    "vendor_logos": {"name": "TEXT", "hash": "TEXT"},
 }
 
 

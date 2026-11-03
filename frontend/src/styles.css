@@ -2010,6 +2010,7 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .logo-search:focus-within .logo-search-ic{color:var(--accent-ink)}
 .logo-sec{margin:-6px 0 -10px;font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .logo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:4px;max-height:280px;overflow:auto;margin:0 -6px;padding:2px 6px 4px}
+.logo-grid.own{max-height:196px}
 .logo-pick{position:relative;display:grid;justify-items:center;gap:7px;padding:12px 4px 10px;border:0;border-radius:14px;background:none;color:var(--ink-2);cursor:pointer;min-width:0;
   animation:pop .35s calc(var(--i) * .018s) var(--ease-spring) both;transition:background .2s}
 .logo-pick .txl-av{transition:transform .3s var(--ease-spring),box-shadow .3s}

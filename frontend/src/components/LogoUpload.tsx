@@ -15,6 +15,9 @@ const minZoomOf = (w: number, h: number) => (0.3 * Math.min(w, h)) / Math.max(w,
 // word mark gets as much room as a square mark), and never wider than SIDE of the circle.
 const AREA = 0.46;
 const SIDE = 0.68;
+// A picture this much wider than tall (or taller than wide) without a plain background is a
+// banner: it is sized as a whole by the same rule, and its edge colour fills the rest.
+const BANNER = 1.3;
 const GLIDE = 720; // ms, how long the zoom takes to glide to that size
 const MAX_FILE = 25 * 1024 * 1024;
 const MAX_SIDE = 1280; // px, larger pictures are scaled down first (the saved badge is 256 px)
@@ -142,10 +145,11 @@ const pngOf = (canvas: HTMLCanvasElement) =>
 
 const COVER = { zoom: 1, pos: { x: 0, y: 0 } };
 // Where a picture settles: a logo on a plain (or see-through) background is centred and sized
-// like the others; anything else (a photo) fills the circle. Null: nothing to size.
-function framing(w: number, h: number, look: Look): { zoom: number; pos: Pos } | null {
-  const b = look.box;
-  if (!look.plain || !b) return null;
+// like the others. A banner without one (a logo on stripes, say) is sized the same way as a
+// whole; anything squarish (a photo, an app icon) fills the circle.
+function framing(w: number, h: number, look: Look): { zoom: number; pos: Pos } {
+  const b = look.plain && look.box ? look.box : Math.max(w, h) / Math.min(w, h) >= BANNER ? { x: 0, y: 0, w: 1, h: 1 } : null;
+  if (!b) return COVER;
   const bw = b.w * w;
   const bh = b.h * h;
   const base = STAGE / Math.min(w, h);
@@ -168,7 +172,8 @@ function swatchesFor(pic: Picked, mode: Mode): Swatch[] {
       ? [{ key: "auto", c: look.ink, auto: true }, ...look.palette.map((c, i) => ({ key: `p${i}`, c })), { key: "black", c: BLACK }, { key: "white", c: WHITE }]
       : [
           ...(look.edge ? [{ key: "auto", c: look.edge, auto: true }] : []),
-          ...look.palette.map((c, i) => ({ key: `p${i}`, c })),
+          // Not the logo's own colour: it would vanish on it (that is what "turned around" is for).
+          ...look.palette.flatMap((c, i) => (near(c, look.ink, 60) ? [] : [{ key: `p${i}`, c }])),
           { key: "white", c: WHITE },
           { key: "black", c: BLACK },
           { key: "none", c: null },
@@ -363,14 +368,14 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
       // It shows as it came for a moment, then the zoom glides to the shared logo size. A
       // one-coloured logo on white or see-through then turns around by itself, like the
       // built-in brand discs. Either step is one click to undo.
-      if (f) later(320, () => glide(f, COVER));
+      if (f !== COVER) later(320, () => glide(f, COVER));
       if (glyph)
         suggest.current = window.setTimeout(
           () => {
             setMode("disc");
             setBurst((b) => b + 1);
           },
-          f ? 320 + GLIDE + 120 : 700,
+          f !== COVER ? 320 + GLIDE + 120 : 700,
         );
       return true;
     } catch {
@@ -573,6 +578,7 @@ export function LogoUpload({ name, onDone, onBack }: { name: string; onDone: () 
     }
   }
 
+  // Always there: one click back to the shared size after zooming by hand.
   const fitTo = pic ? framing(pic.w, pic.h, pic.look) : null;
   const fitted = !!fitTo && Math.abs(fitTo.zoom - zoom) < 0.01 && Math.abs(fitTo.pos.x - pos.x) < 1 && Math.abs(fitTo.pos.y - pos.y) < 1;
 

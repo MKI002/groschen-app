@@ -17,7 +17,9 @@ type Index = {
   lead: Record<string, string>;
   exact: Record<string, string>;
 };
-export type Choice = { kind: "image" | "brand" | "letter"; slug?: string | null; v: string };
+export type Choice = { kind: "image" | "brand" | "letter"; slug?: string | null; v: string; name?: string | null; hash?: string | null };
+/** A picture the user gave a merchant, offered again for others. */
+export type OwnPicture = { key: string; name: string; src: string };
 export type Logo =
   | { kind: "image"; src: string }
   | { kind: "brand"; slug: string; title: string; hex: string; ink: string; path: string | null; dark: boolean }
@@ -191,13 +193,73 @@ export function brand(slug: string): Brand | null {
 export function logoFor(name: string): Logo {
   const key = logoKey(name);
   const own = key ? custom[key] : undefined;
-  if (own?.kind === "image") return { kind: "image", src: `/api/logos/${encodeURIComponent(key)}/image?v=${encodeURIComponent(own.v)}` };
+  if (own?.kind === "image") return { kind: "image", src: pictureSrc(key, own.v) };
   if (own?.kind === "letter") return { kind: "letter" };
   const slug = own?.kind === "brand" && own.slug ? own.slug : autoSlug(name);
   return (slug && brand(slug)) || { kind: "letter" };
 }
 
 export const hasChoice = (name: string) => logoKey(name) in custom;
+
+const pictureSrc = (key: string, v: string) => `/api/logos/${encodeURIComponent(key)}/image?v=${encodeURIComponent(v)}`;
+// "cineplex" for a choice from before names were kept: the key, capitalised.
+const nameOf = (key: string, c: Choice) => c.name || key.charAt(0).toUpperCase() + key.slice(1);
+
+/** The user's own pictures, each once (the same picture given to two merchants shows once). */
+function ownPictures(): OwnPicture[] {
+  const seen = new Set<string>();
+  const out: OwnPicture[] = [];
+  for (const [key, c] of Object.entries(custom)) {
+    if (c.kind !== "image") continue;
+    const id = c.hash || key;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ key, name: nameOf(key, c), src: pictureSrc(key, c.v) });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export const hasOwnPictures = () => Object.values(custom).some((c) => c.kind === "image");
+
+const wordsOf = (s: string) =>
+  s
+    .split(/[^\p{L}\p{N}]+/u)
+    .map(logoKey)
+    .filter((w) => w.length >= 3);
+
+/**
+ * The user's own pictures that fit a search, or (without one) the merchant itself:
+ * "Cineplex Neumarkt" is offered the picture given to "Cineplex", and searching "cine" finds it.
+ * The merchant's own picture is left out; it already shows.
+ */
+export function searchOwn(q: string, merchant: string, limit = 12): OwnPicture[] {
+  const self = logoKey(merchant);
+  const mine = custom[self];
+  const all = ownPictures().filter((p) => p.key !== self && !(mine?.kind === "image" && mine.hash && custom[p.key]?.hash === mine.hash));
+  const needle = logoKey(q);
+  if (needle) {
+    const starts = all.filter((p) => p.key.startsWith(needle) || wordsOf(p.name).some((w) => w.startsWith(needle)));
+    const contains = all.filter((p) => !starts.includes(p) && (p.key.includes(needle) || logoKey(p.name).includes(needle)));
+    return [...starts, ...contains].slice(0, limit);
+  }
+  const words = wordsOf(merchant);
+  return all
+    .filter((p) => {
+      const theirs = wordsOf(p.name);
+      return (
+        (p.key.length >= 4 && self.startsWith(p.key)) ||
+        (self.length >= 4 && p.key.startsWith(self)) ||
+        theirs.some((w) => w.length >= 4 && words.includes(w))
+      );
+    })
+    .slice(0, limit);
+}
+
+/** Gives the merchant the same picture as another one (a copy: changing either later leaves the other). */
+export async function reusePicture(name: string, from: string) {
+  await api.put(`/logos/${encodeURIComponent(logoKey(name))}`, { kind: "image", source: from, name });
+  await reloadChoices();
+}
 
 /** Bundled logos whose name contains the search, best first. */
 export function searchBrands(q: string, limit = 40): string[] {
@@ -219,7 +281,7 @@ export const brandCount = () => (index ? Object.keys(index.icons).length : 0);
 
 export async function chooseLogo(name: string, choice: { kind: "brand"; slug: string } | { kind: "letter" } | null) {
   const key = logoKey(name);
-  if (choice) await api.put(`/logos/${encodeURIComponent(key)}`, choice);
+  if (choice) await api.put(`/logos/${encodeURIComponent(key)}`, { ...choice, name });
   else await api.del(`/logos/${encodeURIComponent(key)}`);
   await reloadChoices();
 }
@@ -228,6 +290,7 @@ export async function chooseLogo(name: string, choice: { kind: "brand"; slug: st
 export async function uploadLogoBlob(name: string, blob: Blob) {
   const form = new FormData();
   form.append("file", blob, "logo.png");
+  form.append("name", name);
   await api.upload(`/logos/${encodeURIComponent(logoKey(name))}/image`, form);
   await reloadChoices();
 }
