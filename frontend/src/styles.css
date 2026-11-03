@@ -1915,12 +1915,12 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .lup-hint{max-width:400px;margin-top:10px;color:var(--faint);font-size:12.5px;line-height:1.45}
 .lup-crop{display:flex;flex-wrap:wrap;align-items:center;gap:22px;padding:6px 0;animation:fade .3s var(--ease-out);border-radius:16px;transition:background .25s}
 .lup-crop.over{background:var(--accent-soft)}
-.lup-stage{position:relative;flex:none;overflow:hidden;border-radius:16px;background:repeating-conic-gradient(#1a1d22 0 25%,#14161a 0 50%) 0 0/16px 16px;cursor:grab;touch-action:none;user-select:none;animation:pop .35s var(--ease-spring)}
+.lup-stage{position:relative;flex:none;overflow:hidden;border-radius:16px;cursor:grab;touch-action:none;user-select:none;animation:pop .35s var(--ease-spring)}
 .lup-stage:active{cursor:grabbing}
 .lup-stage:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .lup-stage img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none}
 .lup-ring{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 400px rgba(10,11,13,.72),inset 0 0 0 2px rgba(255,255,255,.85);pointer-events:none}
-.lup-side{display:grid;gap:12px;flex:1;min-width:180px}
+.lup-side{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;flex:1;min-width:220px;max-width:100%}
 .lup-mini{position:relative;overflow:hidden;border-radius:50%;background:var(--surface-3);flex:none}
 .lup-mini img{position:absolute;left:50%;top:50%;max-width:none}
 .lup-zoom{display:flex;align-items:center;gap:10px;color:var(--muted)}
@@ -2039,3 +2039,57 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .lup-zoom input:active::-webkit-slider-thumb{transform:scale(1.2)}
 .lup-stage.saved .lup-ring{box-shadow:0 0 0 400px rgba(10,11,13,.72),inset 0 0 0 3px var(--good);transition:box-shadow .3s}
 .lup-ok{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;display:grid;place-items:center;border-radius:50%;background:var(--good);color:#06140e;box-shadow:0 0 0 8px rgba(87,211,162,.2);animation:popIn .45s var(--ease-spring)}
+.lup-mini.clear,.lup-wash.clear,.lup-sw.clear{background:repeating-conic-gradient(#2a2d33 0 25%,#1a1c20 0 50%) 0 0/12px 12px}
+/* Smart upload: backgrounds wash in from the middle, a logo pops in, a turned-around logo gets a little burst. */
+.lup-stage{background:var(--sunk)}
+.lup-wash{position:absolute;inset:0;animation:lupWash .55s var(--ease-out) both}
+@keyframes lupWash{from{clip-path:circle(0% at 50% 50%)}to{clip-path:circle(72% at 50% 50%)}}
+.lup-stage img{animation:lupIn .5s var(--ease-spring) backwards}
+@keyframes lupIn{from{opacity:0;scale:.72;filter:blur(6px)}}
+.lup-burst{position:absolute;left:50%;top:50%;pointer-events:none}
+.lup-burst i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.55);opacity:0;
+  animation:lupBurst .8s var(--t) var(--ease-out) both}
+.lup-burst i:nth-child(3n){width:4px;height:4px;background:var(--accent)}
+@keyframes lupBurst{0%{opacity:0;transform:rotate(var(--a)) translateX(10px) scale(.4)}25%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateX(var(--d)) scale(1)}}
+.lup-looks{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.lup-look{position:relative;display:grid;justify-items:center;gap:7px;min-width:0;padding:12px 8px 10px;border:0;border-radius:14px;background:var(--surface-2);color:var(--ink);cursor:pointer;text-align:left;
+  box-shadow:inset 0 0 0 1px var(--line);transition:box-shadow .2s,transform .25s var(--ease-spring),background .2s;animation:rise .4s var(--ease-out) backwards}
+.lup-look:nth-child(2){animation-delay:.06s}
+.lup-look:hover{transform:translateY(-2px)}
+.lup-look.on{background:color-mix(in srgb,var(--accent) 9%,var(--surface-2));box-shadow:inset 0 0 0 1.5px var(--accent-line)}
+.lup-look .lup-mini{box-shadow:0 8px 18px -10px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.06);transition:transform .35s var(--ease-spring)}
+.lup-look.on .lup-mini{transform:scale(1.06) rotate(-4deg)}
+.lup-look-t{display:grid;justify-items:center;gap:0;min-width:0;line-height:1.2;text-align:center}
+.lup-look-t b{font-size:13px;font-weight:600}
+.lup-sugg{display:inline-flex;margin-top:3px;align-items:center;gap:4px;width:max-content;padding:2px 7px 2px 5px;border-radius:99px;font-size:10.5px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft)}
+.lup-sugg.pop{animation:popIn .5s var(--ease-spring) both}
+.lup-bg{display:grid;gap:7px}
+.lup-sws{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.lup-sw{position:relative;width:24px;height:24px;display:grid;place-items:center;padding:0;border:0;border-radius:50%;cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);transition:transform .25s var(--ease-spring),box-shadow .2s;animation:popIn .4s calc(var(--i) * 45ms) var(--ease-spring) backwards}
+.lup-sw:hover{transform:scale(1.15) rotate(-8deg)}
+.lup-sw:active{transform:scale(.92)}
+.lup-sw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.lup-sw.on svg{animation:popIn .35s var(--ease-spring)}
+.lup-sw.wheel{background:conic-gradient(from 200deg,#ff5f5f,#ffcc4d,#7be07b,#4dd2ff,#7a6bff,#ff6bd6,#ff5f5f);color:#fff}
+.lup-sw.wheel svg{filter:drop-shadow(0 0 2px rgba(0,0,0,.7))}
+.lup-sw.wheel input{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;opacity:0;cursor:pointer}
+.lup-sw.wheel:focus-within{outline:2px solid var(--accent);outline-offset:3px}
+.lup-info{display:flex;align-items:center;gap:7px;margin:12px 0 0;color:var(--muted);font-size:12.5px;animation:rise .3s var(--ease-out)}
+.lup-drop.fetching{cursor:progress;border-color:var(--accent-line)}
+@media (prefers-reduced-motion:reduce){.lup-wash,.lup-stage img,.lup-burst,.lup-sw,.lup-look,.lup-sugg.pop{animation:none}}
+.lup-zoom.gliding input::-webkit-slider-thumb{transform:scale(1.25);box-shadow:0 0 0 6px var(--accent-soft),0 0 14px 2px rgba(214,180,110,.5)}
+.lup-zoom.gliding input::-moz-range-thumb{transform:scale(1.25);box-shadow:0 0 0 6px var(--accent-soft),0 0 14px 2px rgba(214,180,110,.5)}
+.lup-fit{width:26px;height:26px;display:grid;place-items:center;flex:none;padding:0;border:0;border-radius:50%;cursor:pointer;color:var(--accent-ink);background:var(--surface-3);
+  transition:transform .25s var(--ease-spring),opacity .2s,background .2s}
+.lup-fit:hover:not(:disabled){transform:rotate(-20deg) scale(1.12);background:var(--accent-soft)}
+.lup-fit:disabled{cursor:default;opacity:.45}
+.lup-fit.on{background:var(--accent-soft);opacity:1}
+/* Cropping needs room: the dialog widens for it, and nothing in the side column may push past it. */
+.modal:has(.lup-crop){max-width:660px}
+.lup-crop{flex-wrap:nowrap}
+@media (max-width:620px){.lup-crop{flex-wrap:wrap;justify-content:center}}
+.lup-zoom input{min-width:0}
+.lup-row{max-width:100%;box-sizing:border-box}
+.modal:has(.lup){transition:max-width .35s var(--ease-out)}
+.lup-zoom input:focus-visible{outline:2px solid var(--accent-line);outline-offset:3px;border-radius:99px}
