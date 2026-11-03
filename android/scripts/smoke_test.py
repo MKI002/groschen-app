@@ -29,6 +29,19 @@ def adb(*args: str, check: bool = True) -> str:
     return subprocess.run(["adb", *args], capture_output=True, text=True, check=check, timeout=180).stdout
 
 
+def press(kind: str, *values: str, tries: int = 3) -> None:
+    """Sends a tap, swipe, key or text. Right after the emulator starts, one of these can fail now and then.
+
+    Only [kind] is logged: [values] can be the password typed into the login."""
+    for attempt in range(1, tries + 1):
+        result = subprocess.run(["adb", "shell", "input", kind, *values], capture_output=True, check=False, timeout=60)
+        if result.returncode == 0:
+            return
+        print(f"input {kind} failed (try {attempt} of {tries}, exit code {result.returncode})")
+        time.sleep(2)
+    fail(f"The emulator didn't take the input {kind}.")
+
+
 def fail(why: str) -> None:
     shot("failed")
     print(adb("logcat", "-d", "-t", "120", check=False)[-8000:])
@@ -94,7 +107,7 @@ def wait_for(text: str, timeout: int = 60, at_least: int = 1) -> list:
 
 def tap(node) -> None:
     x, y = center(node)
-    adb("shell", "input", "tap", str(x), str(y))
+    press("tap", str(x), str(y))
     time.sleep(0.8)
 
 
@@ -108,7 +121,7 @@ def scroll_to(text: str, tries: int = 8) -> None:
         areas = [bounds(n) for n in found if n.get("scrollable") == "true"] or [bounds(n) for n in found[:1]]
         x1, y1, x2, y2 = max(areas, key=lambda b: (b[2] - b[0]) * (b[3] - b[1])) if areas else (0, 0, 320, 640)
         x, height = (x1 + x2) // 2, y2 - y1
-        adb("shell", "input", "swipe", str(x), str(y1 + height * 3 // 4), str(x), str(y1 + height // 4), "400")
+        press("swipe", str(x), str(y1 + height * 3 // 4), str(x), str(y1 + height // 4), "400")
         time.sleep(1)
         check_health()
     fail(f'"{text}" did not show up after scrolling.')
@@ -128,7 +141,7 @@ def hide_keyboard() -> None:
     for _ in range(3):
         if not keyboard_shown():
             return
-        adb("shell", "input", "keyevent", "KEYCODE_BACK")  # with the keyboard up, Back only puts it away
+        press("keyevent", "KEYCODE_BACK")  # with the keyboard up, Back only puts it away
         time.sleep(1)
     fail("The on-screen keyboard didn't go away.")
 
@@ -138,7 +151,7 @@ def type_into(index: int, text: str) -> None:
     if len(fields) <= index:
         fail(f"Expected at least {index + 1} text fields.")
     tap(fields[index])
-    adb("shell", "input", "text", text)
+    press("text", text)
     time.sleep(0.5)
     hide_keyboard()
 
@@ -215,11 +228,11 @@ def main() -> None:
     time.sleep(2)
     scroll_to("A build of your own doesn't look for updates.")
     settle("8-settings", 2)
-    adb("shell", "input", "keyevent", "KEYCODE_BACK")
+    press("keyevent", "KEYCODE_BACK")
     wait_for("FREE TO SPEND UNTIL PAYDAY")
 
     # Into the background and back, as when switching apps.
-    adb("shell", "input", "keyevent", "KEYCODE_HOME")
+    press("keyevent", "KEYCODE_HOME")
     time.sleep(2)
     adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
     settle("9-back-from-background", 3)
