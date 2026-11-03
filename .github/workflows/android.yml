@@ -17,6 +17,7 @@ on:
     branches: [main]
     paths:
       - "android/**"
+      - "!android/scripts/**" # a change to the emulator test alone doesn't need a new APK
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
