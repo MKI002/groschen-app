@@ -320,3 +320,42 @@ def test_refund_links_by_hand_and_undone(user, conn):
     assert user.delete(f"/api/transactions/{back}/refund", headers=H).status_code == 200
     assert user.get(f"/api/transactions/{buy}/refund").json()["refunded"] == 5.0
     assert user.delete("/api/transactions/9999/refund", headers=H).status_code == 404
+
+
+def test_moves_between_own_accounts_are_neither_spent_nor_earned(user, run_job, conn):
+    """Kleingeld Plus and other transfers between own accounts: both sides known, neutral in sums and filters."""
+    demo.load()
+    page = user.get("/api/transactions", params={"limit": 1000, "preset": "last30"}).json()
+    by_id = {t["id"]: t for t in page["items"]}
+    roundups = [t for t in page["items"] if t["roundup"]]
+    assert roundups, "the demo has Kleingeld Plus round-ups in the last month"
+    for t in roundups:
+        mv = t["move"]
+        assert (mv["from"], mv["to"]) == ("Girokonto", "Extra-Konto")
+        other = by_id[mv["mirror"]]
+        assert other["move"]["mirror"] == t["id"] and other["amount"] == -t["amount"]
+    # A savings plan purchase leaves the Girokonto for the depot, which has no booking of it.
+    plan = next(t for t in page["items"] if t["category"] == "Investments")
+    assert plan["move"] == {"from": "Girokonto", "to": "Direkt-Depot", "mirror": None} and not plan["roundup"]
+    # Real spending and income have no move.
+    assert all(t["move"] is None for t in page["items"] if t["category"] in ("Groceries", "Salary"))
+
+    # "In" and "out" leave moves out, and so does the income filter.
+    rows = conn.execute(
+        "SELECT t.amount, c.kind FROM transactions t JOIN accounts a ON a.id = t.account_id "
+        "LEFT JOIN categories c ON c.id = t.category_id WHERE a.enabled = 1 AND a.fx_ok = 1 AND t.date >= ? AND t.date <= ?",
+        (page["range"]["start"], page["range"]["end"]),
+    ).fetchall()
+    assert page["in"] == round(sum(a for a, k in rows if a > 0 and k != "transfer"), 2)
+    assert page["out"] == round(sum(-a for a, k in rows if a < 0 and k != "transfer"), 2)
+    income = user.get("/api/transactions", params={"limit": 1000, "filter": "income", "preset": "last30"}).json()
+    assert income["items"] and all(t["move"] is None for t in income["items"])
+
+    # Filed under a real category, a move is real spending again.
+    out = next(t for t in roundups if t["amount"] < 0)
+    groceries = conn.execute("SELECT id FROM categories WHERE name = 'Groceries'").fetchone()[0]
+    r = user.patch(f"/api/transactions/{out['id']}", json={"category_id": groceries, "apply_to_similar": False}, headers=H)
+    assert r.status_code == 200
+    again = {t["id"]: t for t in user.get("/api/transactions", params={"limit": 1000, "preset": "last30"}).json()["items"]}
+    assert again[out["id"]]["move"] is None and not again[out["id"]]["roundup"]
+    assert again[out["move"]["mirror"]]["move"]["mirror"] is None  # the other side stays a move, on its own

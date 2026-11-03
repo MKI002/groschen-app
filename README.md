@@ -96,7 +96,9 @@
 - **Less sorting by hand**: money moved to your own name (the Extra-Konto, a broker, an account at
   another bank) counts as moved, saved or invested, not spent; a refund cancels out the purchase it
   belongs to; payees get readable names ("VISA MCDONALDS 01234" becomes McDonald's, PayPal shows
-  the shop behind it); a day's Kleingeld Plus round-ups are one line. Hints stay quiet about
+  the shop behind it). Money moved between your own accounts shows in grey without a sign, both
+  sides as one row ("Girokonto → Extra-Konto"), and a day's round-ups (Kleingeld Plus and the like)
+  fold into one line you can open. Hints stay quiet about
   everyday shopping, and new merchant knowledge sorts existing bookings again after an update
   (never the ones you sorted).
 - **Depot**: value against money paid in, with what each month (week, day) earned or lost in euros

@@ -6,7 +6,7 @@ import { Icon } from "../components/Icons";
 import { LogoButton } from "../components/Logo";
 import { celebrate } from "../components/Motion";
 import { LinkAsk, MoneyBackFor, PaymentBack, PaymentPicker } from "../components/Refunds";
-import { TxList } from "../components/TxList";
+import { route, TxList } from "../components/TxList";
 import { Card, Empty, ErrorNote, IconBadge, Loading, Modal, Seg, Spinner, Switch, useApi, useSyncEvents, useToast } from "../components/UI";
 import { api, qs } from "../lib/api";
 import { t, useT, type Key } from "../i18n";
@@ -65,7 +65,7 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
   const [linking, setLinking] = useState<number | null>(null);
   const backFor = !!tx.refund_for;
   const { data: back } = useApi<RefundInfo>(backFor || (tx.refunded && tx.amount < 0) ? `/transactions/${tx.id}/refund` : null);
-  const canLink = tx.amount > 0 && !backFor && !(tx.cat_source && tx.cat_source in WHY) && !EARNED.has(tx.category ?? "");
+  const canLink = tx.amount > 0 && !backFor && !tx.move && !(tx.cat_source && tx.cat_source in WHY) && !EARNED.has(tx.category ?? "");
 
   async function unlink(refund: TxBrief) {
     const to = back?.purchase?.id;
@@ -147,7 +147,9 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
       <div className="txtop">
       <LogoButton name={tx.merchant} />
       <div className="txhead">
-        <span className={`txhead-amt${tx.amount > 0 ? " pos" : ""}`}>{tx.orig_amount != null && tx.fx_rate == null && tx.currency ? money(tx.orig_amount, tx.currency) : eur(tx.amount)}</span>
+        <span className={`txhead-amt${tx.move ? " moved" : tx.amount > 0 ? " pos" : ""}`}>
+          {tx.orig_amount != null && tx.fx_rate == null && tx.currency ? money(tx.move ? Math.abs(tx.orig_amount) : tx.orig_amount, tx.currency) : eur(tx.move ? Math.abs(tx.amount) : tx.amount)}
+        </span>
         {tx.orig_amount != null && tx.currency && (
           <span className="txhead-orig">
             {tx.fx_rate != null
@@ -161,7 +163,12 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
         {tx.counts_for && <span className="tag">{t("tx.countsForLong", { month: monthLong(tx.counts_for) })}</span>}
       </div>
       </div>
-      {tx.cat_source && tx.cat_source in WHY && (
+      {tx.move ? (
+        <p className="why moved">
+          <Icon name="swap" size={14} />
+          {t("why.move", { route: route(tx) })}
+        </p>
+      ) : tx.cat_source && tx.cat_source in WHY && (
         <p className="why">
           <Icon name={WHY[tx.cat_source][0]} size={14} />
           {t(WHY[tx.cat_source][1])}

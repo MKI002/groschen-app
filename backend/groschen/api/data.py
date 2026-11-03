@@ -15,6 +15,7 @@ from ..analytics import (
     common,
     drilldown,
     fund,
+    moves,
     networth,
     paydays,
     plans,
@@ -74,6 +75,10 @@ def get_daily(year: int | None = Query(None, ge=1900, le=2999)):
         return {"year": y, **cashflow.daily(conn, f"{y}-01-01", f"{y}-12-31")}
 
 
+# What the list's "in" and "out" add up: money with an exchange rate that wasn't only moved between own accounts.
+_SUMMED = "a.fx_ok = 1 AND COALESCE(c.kind, '') != 'transfer'"
+
+
 @router.get("/transactions")
 def get_transactions(
     q: str = "",
@@ -120,7 +125,8 @@ def get_transactions(
     elif filter == "unc":
         where.append("t.category_id IS NULL")
     elif filter == "income":
-        where.append("t.amount > 0")
+        # Money moved in from another own account is no income.
+        where.append("t.amount > 0 AND COALESCE(c.kind, '') != 'transfer'")
     if account_id:
         where.append("t.account_id = ?")
         params.append(account_id)
@@ -149,22 +155,22 @@ def get_transactions(
             )
         )
         total, inflow, outflow, review = conn.execute(
-            # Money without an exchange rate is listed but not added up.
-            f"SELECT COUNT(*), COALESCE(SUM(CASE WHEN t.amount > 0 AND a.fx_ok = 1 THEN t.amount END), 0), "
-            f"COALESCE(SUM(CASE WHEN t.amount < 0 AND a.fx_ok = 1 THEN -t.amount END), 0), "
+            # Money without an exchange rate is listed but not added up, nor money moved between own accounts.
+            f"SELECT COUNT(*), COALESCE(SUM(CASE WHEN t.amount > 0 AND {_SUMMED} THEN t.amount END), 0), "
+            f"COALESCE(SUM(CASE WHEN t.amount < 0 AND {_SUMMED} THEN -t.amount END), 0), "
             f"COALESCE(SUM(t.needs_review), 0) {base}",
             params,
         ).fetchone()
         moved = paydays.shifted(conn)
         sub_marks = recurring.marks(conn)
         refunds.annotate(conn, items)
+        # Moves between own accounts show as one quiet row, and a day's round-ups fold into one line.
+        moves.annotate(conn, items)
     for it in items:
         it["merchant"] = display_name(it)
         it["detail"] = names.display_detail(it)
         it["counts_for"] = moved.get(it["id"])
         it["subscription"] = sub_marks.get(engine.merchant_key(it))
-        # Kleingeld Plus rounds up every card payment: the list folds a day's round-ups into one line.
-        it["roundup"] = it["merchant"] == "Kleingeld Plus" and abs(it["amount"]) < 5
     return {
         "items": items,
         "total": total,
