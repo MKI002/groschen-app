@@ -43,10 +43,10 @@ import io.github.mki002.groschen.ui.components.GCard
 import io.github.mki002.groschen.ui.components.GIcon
 import io.github.mki002.groschen.ui.components.Hairline
 import io.github.mki002.groschen.ui.components.Ico
-import io.github.mki002.groschen.ui.components.Initial
 import io.github.mki002.groschen.ui.components.Label
 import io.github.mki002.groschen.ui.components.LocalFmt
 import io.github.mki002.groschen.ui.components.LocalStrings
+import io.github.mki002.groschen.ui.components.MerchantBadge
 import io.github.mki002.groschen.ui.components.Money
 import io.github.mki002.groschen.ui.components.Pill
 import io.github.mki002.groschen.ui.components.Placeholder
@@ -188,7 +188,7 @@ private fun FixedRow(f: FixedCost, showNext: Boolean) {
     val s = LocalStrings.current
     val fmt = LocalFmt.current
     Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-        Initial(f.name, Palette.category(null).takeIf { f.status != "active" } ?: Palette.accent2, size = 34.dp)
+        MerchantBadge(f.name, Palette.category(null).takeIf { f.status != "active" } ?: Palette.accent2, size = 34.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(f.name, style = G.type.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -7,6 +7,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,8 +34,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -43,7 +47,13 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -56,15 +66,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import io.github.mki002.groschen.data.MerchantLogo
 import io.github.mki002.groschen.i18n.Fmt
 import io.github.mki002.groschen.i18n.Lang
 import io.github.mki002.groschen.i18n.Strings
 import io.github.mki002.groschen.i18n.strings
+import io.github.mki002.groschen.model.Logos
 import io.github.mki002.groschen.ui.theme.G
 import io.github.mki002.groschen.ui.theme.Palette
 
 val LocalStrings = compositionLocalOf<Strings> { strings(Lang.DE) }
 val LocalFmt = compositionLocalOf { Fmt(Lang.DE, "DE", "EUR", hidden = false) }
+val LocalLogos = staticCompositionLocalOf<Logos?> { null }
 
 val CardShape = RoundedCornerShape(18.dp)
 private val ButtonShape = RoundedCornerShape(12.dp)
@@ -148,6 +161,81 @@ fun Initial(text: String, color: Color, modifier: Modifier = Modifier, size: Dp 
     ) {
         Text(letter, style = G.type.bodyStrong, color = color)
     }
+}
+
+/**
+ * A merchant's round badge, as in the web app: its brand logo on the brand's colour, a picture
+ * the user picked, or its letter (also while the logo is still on its way).
+ */
+@Composable
+fun MerchantBadge(name: String, color: Color, modifier: Modifier = Modifier, size: Dp = 38.dp) {
+    val logos = LocalLogos.current
+    if (logos != null) LaunchedEffect(logos, name) { logos.want(name) }
+    val logo = logos?.of(name)
+    if (logos == null || logo == null) {
+        Initial(name, color, modifier, size)
+    } else if (logo.kind == "brand") {
+        val drawing = rememberDrawing(logo.path)
+        if (drawing == null) Initial(name, color, modifier, size) else BrandBadge(logo, drawing, modifier, size)
+    } else if (logo.kind == "image") {
+        LaunchedEffect(logos, logo) { logos.wantPicture(logo) }
+        val picture = logos.picture(logo)
+        if (picture == null) {
+            Initial(name, color, modifier, size)
+        } else {
+            Image(
+                picture,
+                contentDescription = null,
+                modifier = modifier.size(size).clip(CircleShape).background(Palette.surface2),
+                contentScale = ContentScale.Crop,
+            )
+        }
+    } else {
+        Initial(name, color, modifier, size)
+    }
+}
+
+// Read once per logo, not again for each row that scrolls into view.
+private val drawings = HashMap<String, ImageVector>()
+
+/** A built-in logo's drawing (SVG path data on a 24 x 24 grid); null if it can't be read. */
+@Composable
+private fun rememberDrawing(path: String?): ImageVector? = remember(path) {
+    path?.let { d ->
+        drawings[d] ?: runCatching {
+            ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+                .addPath(pathData = addPathNodes(d), fill = SolidColor(Color.White))
+                .build()
+        }.getOrNull()?.also { drawings[d] = it }
+    }
+}
+
+/** The drawing in the logo's ink at half the disc's size, as the web app draws it. */
+@Composable
+private fun BrandBadge(logo: MerchantLogo, drawing: ImageVector, modifier: Modifier, size: Dp) {
+    val disc = remember(logo.hex) { colorOf(logo.hex) ?: Palette.surface2 }
+    val ink = remember(logo.ink) { colorOf(logo.ink) ?: Color.White }
+    Box(
+        modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(disc)
+            .let { if (logo.dark) it.border(1.dp, Palette.line2, CircleShape) else it },
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            rememberVectorPainter(drawing),
+            contentDescription = null,
+            modifier = Modifier.size(size * 0.5f),
+            colorFilter = ColorFilter.tint(ink),
+        )
+    }
+}
+
+/** "#E50914" as a colour; null for anything else. */
+private fun colorOf(hex: String?): Color? {
+    val digits = hex?.removePrefix("#")?.takeIf { it.length == 6 } ?: return null
+    return digits.toLongOrNull(16)?.let { Color(0xFF000000 or it) }
 }
 
 @Composable

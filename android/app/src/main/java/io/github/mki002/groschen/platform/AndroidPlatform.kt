@@ -261,6 +261,18 @@ class AndroidPlatform(private val app: Context) : Platform {
     override fun decodeImage(bytes: ByteArray): ImageBitmap? =
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
 
+    override fun decodeSmallImage(bytes: ByteArray, maxSide: Int): ImageBitmap? {
+        // Only the size first: a small file can still be a huge picture that fills the memory.
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val side = maxOf(bounds.outWidth, bounds.outHeight)
+        if (side <= 0) return null
+        var sample = 1
+        while (side / (sample * 2) >= maxSide) sample *= 2
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
+    }
+
     // --- updates from GitHub Releases ---------------------------------------------------------
 
     override val versionCode: Int
