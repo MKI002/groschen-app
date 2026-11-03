@@ -153,6 +153,10 @@ export type SavedTo = {
   items: SavedItem[];
 };
 
+// Where money that only moved went: account names (null where Groschen doesn't know the account)
+// and the booking on the other account when both sides are there.
+export type TxMove = { from: string | null; to: string | null; mirror: number | null };
+
 export type Tx = {
   id: number;
   date: string;
@@ -172,7 +176,8 @@ export type Tx = {
   merchant: string;
   counts_for: string | null; // salary paid late in a month: the date it counts for instead
   subscription: "yes" | "no" | null;
-  roundup?: boolean; // one of Kleingeld Plus' round-ups (the Transactions list folds them per day)
+  roundup?: boolean; // a round-up like Kleingeld Plus' (the Transactions list folds a day's round-ups)
+  move?: TxMove | null; // money only moved between own accounts: neither spent nor earned
   detail?: string; // the purpose without bank references, for the second line in lists ("" when it adds nothing)
   refunded?: number | null; // what came back for this payment in all (a refund, someone paying back)
   refund_for?: TxBrief | null; // the payment this money came back for

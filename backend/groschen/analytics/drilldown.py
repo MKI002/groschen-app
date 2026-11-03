@@ -5,7 +5,7 @@ import statistics
 
 from .. import db
 from ..categorize import names
-from . import common, paydays, refunds
+from . import common, moves, paydays, refunds
 
 SORTS = {"date", "amount", "merchant"}
 WEEKDAYS = 7
@@ -312,6 +312,7 @@ def build(
         for t in items[offset : offset + max(0, min(limit, 1000))]
     ]
     refunds.annotate(conn, page)
+    moves.annotate(conn, page)
     return {
         "scope": {
             "kind": scope["kind"],

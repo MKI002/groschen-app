@@ -25,7 +25,8 @@ GROUP = {"plan": "invested", "etf": "invested", "savings": "aside", "other": "as
 OLD = {"roundup": "plan"}  # choices saved before round-ups joined the savings plan
 MAX_DAYS = 4
 
-ROUNDUP_RE = re.compile(r"KLEINGELD|AUFRUNDUNG|ROUND ?UP")
+# Round-up saving: ING Kleingeld Plus, and the same idea at other banks (Aufrunden, Round-ups, Spare change).
+ROUNDUP_RE = re.compile(r"KLEINGELD|AUFRUND|AUFGERUNDET|\bROUND[ -]?UP|SPARE CHANGE|KEEP THE CHANGE")
 PLAN_RE = re.compile(r"SPARPLAN|DAUERAUFTRAG|SAVINGS PLAN")
 # A transfer whose text talks about investing, e.g. to an investment account at another bank.
 INVEST_RE = re.compile(r"INVEST|\bETFS?\b|\bDEPOT|AKTIE|BROKER|BOERSE|BÖRSE|WERTPAPIER")
@@ -54,7 +55,7 @@ def _bucket(kind: str) -> str:
     return "depot" if kind == "depot" else "savings" if kind == "savings" else "cash"
 
 
-def _match(txs: list[dict], accounts: dict[int, dict]) -> dict[int, dict]:
+def mirrors(txs: list[dict], accounts: dict[int, dict]) -> dict[int, dict]:
     """Pair each transfer with its mirror image on another of the user's accounts.
 
     Same amount the other way round on a different account within a few days. A counterparty IBAN
@@ -140,7 +141,7 @@ def destinations(conn, start: str, end: str, saved: float, txs: list[dict], paym
         return t["id"] in counted or t["id"] in by_tx or (cats.get(t["category_id"]) or {}).get("kind") == "transfer"
 
     transfers = [t for t in window if moved(t)]
-    pairs = _match(transfers, accounts)
+    pairs = mirrors(transfers, accounts)
     is_transfer = {t["id"] for t in transfers}
 
     amounts = dict.fromkeys(DESTS, 0.0)

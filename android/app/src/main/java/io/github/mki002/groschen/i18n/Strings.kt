@@ -137,6 +137,8 @@ interface Strings : GroschenApi.ApiTexts {
 
     // Transactions
     fun bookingCount(n: Int): String
+    fun roundUps(n: Int): String
+    fun movedWhy(route: String): String
     val search: String
     val searchHint: String
     val clear: String
@@ -418,6 +420,8 @@ object De : Strings {
     override val hintSubResumedMore = " nach {pause} Pause: {amount} {interval}."
 
     override fun bookingCount(n: Int) = plural(n, "1 Buchung", "{n} Buchungen")
+    override fun roundUps(n: Int) = plural(n, "1 Aufrundung", "{n} Aufrundungen")
+    override fun movedWhy(route: String) = "$route: weder Ausgabe noch Einnahme"
     override val search = "Suchen"
     override val searchHint = "Händler, Text oder Betrag"
     override val clear = "Leeren"
@@ -712,6 +716,8 @@ object En : Strings {
     override val hintSubResumedMore = " after a pause of {pause}: {amount} {interval}."
 
     override fun bookingCount(n: Int) = plural(n, "1 booking", "{n} bookings")
+    override fun roundUps(n: Int) = plural(n, "1 round-up", "{n} round-ups")
+    override fun movedWhy(route: String) = "$route: neither spending nor income"
     override val search = "Search"
     override val searchHint = "Merchant, text or amount"
     override val clear = "Clear"
