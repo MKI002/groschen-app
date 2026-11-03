@@ -29,15 +29,17 @@ def adb(*args: str, check: bool = True) -> str:
     return subprocess.run(["adb", *args], capture_output=True, text=True, check=check, timeout=180).stdout
 
 
-def press(*args: str, tries: int = 3) -> None:
-    """Sends a tap, swipe, key or text. Right after the emulator starts, one of these can fail now and then."""
+def press(kind: str, *values: str, tries: int = 3) -> None:
+    """Sends a tap, swipe, key or text. Right after the emulator starts, one of these can fail now and then.
+
+    Only [kind] is logged: [values] can be the password typed into the login."""
     for attempt in range(1, tries + 1):
-        result = subprocess.run(["adb", "shell", "input", *args], capture_output=True, text=True, check=False, timeout=60)
+        result = subprocess.run(["adb", "shell", "input", kind, *values], capture_output=True, check=False, timeout=60)
         if result.returncode == 0:
             return
-        print(f"input {args[0]} failed (try {attempt} of {tries}): {(result.stderr or result.stdout).strip()}")
+        print(f"input {kind} failed (try {attempt} of {tries}, exit code {result.returncode})")
         time.sleep(2)
-    fail(f"The emulator didn't take the input {' '.join(args)}.")
+    fail(f"The emulator didn't take the input {kind}.")
 
 
 def fail(why: str) -> None:
