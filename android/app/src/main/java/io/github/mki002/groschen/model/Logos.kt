@@ -25,12 +25,16 @@ class Logos(
     private val scope: CoroutineScope,
     private val api: () -> GroschenApi?,
     private val decode: (ByteArray) -> ImageBitmap?,
+    private val warn: (String) -> Unit = {},
 ) {
     private val known = mutableStateMapOf<String, MerchantLogo>()
     private val pictures = mutableStateMapOf<String, ImageBitmap>()
     private val pending = LinkedHashSet<String>()
     private val asked = HashSet<String>()
     private val loading = HashSet<String>()
+
+    /** Names whose request failed (offline, or a server from before the logos); asked again on refresh. */
+    private val failed = LinkedHashSet<String>()
     private var asking: Task? = null
 
     /** Raised by [clear], so answers to an older login are dropped. */
@@ -49,6 +53,9 @@ class Logos(
     /** Asks again for every name shown so far: a logo may have been changed on the web. */
     fun refresh() {
         pending += known.keys
+        pending += failed
+        asked += failed
+        failed.clear()
         ask()
     }
 
@@ -61,6 +68,7 @@ class Logos(
         pending.clear()
         asked.clear()
         loading.clear()
+        failed.clear()
     }
 
     /** A user's own picture, once loaded. */
@@ -85,6 +93,7 @@ class Logos(
                 throw e
             } catch (e: Exception) {
                 // Offline or gone: the letter stays.
+                warn("Logo picture $key: ${e.message ?: e::class.simpleName}")
             } finally {
                 if (mine == round) loading.remove(id)
             }
@@ -108,12 +117,17 @@ class Logos(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        // Asked again the next time they are shown or the page is refreshed.
+                        // Asked again when the page is refreshed (or a row comes back into view).
+                        warn("Logos for ${names.size} names: ${e.message ?: e::class.simpleName}")
                         asked.removeAll(names.toSet())
+                        failed += names
                         break
                     }
                     if (mine != round) break
-                    for (name in names) known[name] = got[name] ?: MerchantLogo()
+                    for (name in names) {
+                        known[name] = got[name] ?: MerchantLogo()
+                        failed.remove(name)
+                    }
                 }
             } finally {
                 if (mine == round) asking = null
