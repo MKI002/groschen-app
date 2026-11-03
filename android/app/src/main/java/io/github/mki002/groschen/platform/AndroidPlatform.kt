@@ -21,6 +21,7 @@ import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.edit
@@ -260,6 +261,10 @@ class AndroidPlatform(private val app: Context) : Platform {
 
     override fun decodeImage(bytes: ByteArray): ImageBitmap? =
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+
+    override fun warn(message: String) {
+        Log.w("Groschen", message)
+    }
 
     override fun decodeSmallImage(bytes: ByteArray, maxSide: Int): ImageBitmap? {
         // Only the size first: a small file can still be a huge picture that fills the memory.

@@ -152,7 +152,7 @@ class AppModel(
     private var backgroundSince: Long? = null
 
     /** The merchants' logos, as picked in the web app. */
-    val logos = Logos(scope, { api }) { platform.decodeSmallImage(it, maxSide = 256) }
+    val logos = Logos(scope, { api }, { platform.decodeSmallImage(it, maxSide = 256) }, platform::warn)
 
     // --- start, connect, log in ---------------------------------------------------------------
 

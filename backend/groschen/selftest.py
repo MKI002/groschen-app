@@ -1,7 +1,8 @@
 """Checks the finished image before it is published: ``python -m groschen.selftest``.
 
-It loads the bundled model, categorizes a few German bank texts and makes sure
-the network guard blocks a request to the internet. The GitHub build runs this
+It loads the bundled model, categorizes a few German bank texts, finds the
+built-in logos the phone app asks for and makes sure the network guard blocks
+a request to the internet. The GitHub build runs this
 inside the image; if it fails, the image isn't pushed.
 """
 
@@ -18,7 +19,7 @@ def main() -> int:
     os.environ.setdefault("GROSCHEN_DATA", tempfile.mkdtemp())
     from pathlib import Path
 
-    from . import config, db, netguard
+    from . import brand_logos, config, db, netguard
     from .bank import sync
     from .categorize import embedder, engine
 
@@ -59,6 +60,12 @@ def main() -> int:
     print(f"Model: {hits}/{len(samples)} as expected in {elapsed:.2f}s")
     if hits < 2:
         failures.append("the model categorized too few sample texts correctly")
+
+    netflix = brand_logos.brand(brand_logos.auto_slug("NETFLIX.COM") or "")
+    if netflix and netflix["path"]:
+        print(f"Logos: {len(brand_logos._index()['icons'])} built in, NETFLIX.COM -> {netflix['title']}")
+    else:
+        failures.append("the built-in logos for the phone app are missing")
 
     try:
         socket.getaddrinfo("example.com", 443)

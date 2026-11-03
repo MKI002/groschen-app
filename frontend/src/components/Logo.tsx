@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { t, useT } from "../i18n";
 import { initial } from "../lib/format";
-import { brand, brandCount, chooseLogo, hasChoice, logoFor, searchBrands, useLogos, type Logo } from "../lib/logos";
+import { brand, brandCount, chooseLogo, hasChoice, hasOwnPictures, logoFor, reusePicture, searchBrands, searchOwn, useLogos, type Logo } from "../lib/logos";
 import { Icon } from "./Icons";
 import { LogoUpload } from "./LogoUpload";
 import { Modal, Spinner } from "./UI";
@@ -67,6 +67,9 @@ export function LogoEditor({ name, onClose }: { name: string; onClose: () => voi
   const chosen = hasChoice(name);
   const typed = q.trim().length > 0;
   const found = typed ? searchBrands(q, 40) : suggestionsFor(name);
+  // Pictures already given to other merchants: "Cineplex" for "Cineplex Musterstadt".
+  const yours = searchOwn(typed ? q : "", name);
+  const search = t(hasOwnPictures() ? "logo.searchAll" : "logo.search", { n: brandCount().toLocaleString() });
   const flip = current.kind === "brand" ? current.slug : current.kind === "image" ? current.src : "letter";
 
   // A short "saved" moment on the big badge, then the dialog closes by itself.
@@ -152,13 +155,36 @@ export function LogoEditor({ name, onClose }: { name: string; onClose: () => voi
           id="logo-q"
           value={q}
           maxLength={60}
-          placeholder={t("logo.search", { n: brandCount().toLocaleString() })}
-          aria-label={t("logo.search", { n: brandCount().toLocaleString() })}
+          placeholder={search}
+          aria-label={search}
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
-      {found.length > 0 && !typed && <span className="logo-sec">{t("logo.suggested")}</span>}
-      {(typed || found.length > 0) && (
+      {yours.length > 0 && (
+        <>
+          <span className="logo-sec">{t("logo.yours")}</span>
+          <div className="logo-grid own" key={`own|${typed ? q.trim().toLowerCase() : ""}`}>
+            {yours.map((p, i) => (
+              <button
+                key={p.key}
+                type="button"
+                className="logo-pick"
+                style={{ ["--i" as string]: Math.min(i, 20), ["--b" as string]: "var(--faint)" } as CSSProperties}
+                disabled={busy !== null}
+                onClick={() => run(p.key, () => reusePicture(name, p.key), true)}
+                title={p.name}
+              >
+                <span className="txl-av logo img" aria-hidden="true">
+                  {busy === p.key ? <Spinner /> : <img src={p.src} alt="" draggable={false} />}
+                </span>
+                <small>{p.name}</small>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {found.length > 0 && (!typed || yours.length > 0) && <span className="logo-sec">{t(typed ? "logo.builtIn" : "logo.suggested")}</span>}
+      {((typed && yours.length === 0) || found.length > 0) && (
         <div className="logo-grid" key={typed ? q.trim().toLowerCase() : "suggest"}>
           {typed && found.length === 0 && (
             <p className="logo-none">

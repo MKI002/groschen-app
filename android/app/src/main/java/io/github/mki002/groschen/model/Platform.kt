@@ -85,6 +85,9 @@ interface Platform {
     /** A picture the bank sends with a TAN request (photoTAN, chipTAN QR). */
     fun decodeImage(bytes: ByteArray): ImageBitmap?
 
+    /** A note in the phone's log for something that went wrong without bothering the user. */
+    fun warn(message: String)
+
     /** A picture read at a fraction of its size, so its long side is at most about twice [maxSide]. */
     fun decodeSmallImage(bytes: ByteArray, maxSide: Int): ImageBitmap?
 
