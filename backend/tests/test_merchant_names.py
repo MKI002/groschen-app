@@ -64,3 +64,24 @@ def test_saved_keys_with_spaces_are_carried_over(conn):
 
     engine.migrate_merchant_keys(conn)  # running twice changes nothing
     assert [tuple(r) for r in conn.execute("SELECT key, category_id, hits FROM merchant_memory")] == memory
+
+
+def test_paypal_shop_split_by_a_line_break_reads_whole():
+    # The bank wraps the text at a fixed width; here the break fell inside "Autohaus".
+    for purpose in (
+        "1045268799996/PP.1329.PP/. Autohaus Lorenzen GmbH, Ihr Einkauf bei Aut\nohaus Lorenzen GmbH",
+        "1045268799996/PP.1329.PP/. Autohaus Lorenzen GmbH, Ihr Einkauf bei Aut ohaus Lorenzen GmbH",
+        "1045268799996/PP.1329.PP/. Auto haus Lorenzen GmbH, Ihr Einkauf bei Autohaus Lorenzen GmbH",
+        "1045268799996/PP.1329.PP/. Autohaus Lorenzen GmbH, Ihr Einkauf bei Autohaus Lorenzen GmbH",
+    ):
+        assert names.display_name({"counterparty": PAYPAL, "purpose": purpose}) == "Autohaus Lorenzen"
+    steam = {
+        "counterparty": PAYPAL,
+        "purpose": "1046637198614/PP.1329.PP/. www.steampowered.com, Ihr Einkauf bei www.s teampowered.com",
+    }
+    assert names.display_name(steam) == "www.steampowered.com"
+    # A shop that is only named once keeps its name as written.
+    only = {"counterparty": PAYPAL, "purpose": "1/PP.5521.PP . Ihr Einkauf bei Cafe Rose"}
+    assert names.display_name(only) == "Cafe Rose"
+    other = {"counterparty": PAYPAL, "purpose": "1/PP.5521.PP . Spende, Ihr Einkauf bei Cafe Rose"}
+    assert names.display_name(other) == "Cafe Rose"

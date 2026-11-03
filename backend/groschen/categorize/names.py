@@ -197,13 +197,37 @@ def display_detail(tx: dict) -> str:
     return text[:120]
 
 
+def _paypal_shop(purpose: str) -> str:
+    """The shop behind a PayPal booking, as written after "Ihr Einkauf bei". Empty when there is none.
+
+    Banks wrap this text at a fixed width and the break can fall inside a word: "Ihr Einkauf bei Aut"
+    + "ohaus Lorenzen GmbH" comes through as "Aut ohaus". PayPal names the shop earlier in the same
+    text too ("PP.1329.PP/. Autohaus Lorenzen GmbH, Ihr Einkauf bei ..."), so when both copies are
+    the same name apart from spaces, the one with fewer spaces wins.
+    """
+    text = " ".join(purpose.split())
+    m = PAYPAL_SHOP.search(text)
+    if not m:
+        return ""
+    shop = m.group(1).strip()
+    key = name_key(shop)
+    before = text[: m.start()].rstrip(" ,;")
+    if key:
+        for i in [0] + [j + 1 for j, c in enumerate(before) if c in " ./"]:
+            other = before[i:].lstrip(" ./").strip()
+            if other and name_key(other) == key:
+                if other.count(" ") < shop.count(" "):
+                    shop = other
+                break
+    return shop
+
+
 def display_name(tx: dict) -> str:
     """The name lists show for a booking: the cleaned payee, the shop behind PayPal, or what was booked."""
     cp = (tx.get("counterparty") or "").strip()
     purpose = (tx.get("purpose") or "").strip()
     if cp and "PAYPAL" in cp.upper():
-        m = PAYPAL_SHOP.search(purpose)
-        shop = clean(m.group(1)) if m else ""
+        shop = clean(_paypal_shop(purpose))
         return shop or "PayPal"
     if cp:
         return clean(cp)
