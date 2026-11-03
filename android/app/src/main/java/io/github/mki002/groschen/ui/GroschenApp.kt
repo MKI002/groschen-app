@@ -54,6 +54,7 @@ import io.github.mki002.groschen.ui.components.GIcon
 import io.github.mki002.groschen.ui.components.Hairline
 import io.github.mki002.groschen.ui.components.Ico
 import io.github.mki002.groschen.ui.components.LocalFmt
+import io.github.mki002.groschen.ui.components.LocalLogos
 import io.github.mki002.groschen.ui.components.LocalStrings
 import io.github.mki002.groschen.ui.components.Logo
 import io.github.mki002.groschen.ui.components.RoundButton
@@ -74,7 +75,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun GroschenApp(model: AppModel, font: FontFamily) {
     GroschenTheme(font) {
-        CompositionLocalProvider(LocalStrings provides model.s, LocalFmt provides model.fmt) {
+        CompositionLocalProvider(LocalStrings provides model.s, LocalFmt provides model.fmt, LocalLogos provides model.logos) {
             Box(Modifier.fillMaxSize().background(Palette.bg)) {
                 Crossfade(model.stage, animationSpec = tween(280), label = "stage") { stage ->
                     when (stage) {

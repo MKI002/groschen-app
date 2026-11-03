@@ -24,6 +24,8 @@ RUN python -m venv /opt/venv \
 FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS app
 COPY backend/groschen /app/groschen
 COPY --from=web /src/backend/groschen/static /app/groschen/static
+# The built-in logos once more as plain files, so the server can tell the phone app which to draw.
+COPY frontend/src/data/logos /app/groschen/logodata
 RUN python -m compileall -q /app/groschen \
  && chmod -R a-w /app
 

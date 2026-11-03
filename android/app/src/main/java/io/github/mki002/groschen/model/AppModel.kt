@@ -151,6 +151,9 @@ class AppModel(
     private var api: GroschenApi? = null
     private var backgroundSince: Long? = null
 
+    /** The merchants' logos, as picked in the web app. */
+    val logos = Logos(scope, { api }, platform::decodeImage)
+
     // --- start, connect, log in ---------------------------------------------------------------
 
     fun start() {
@@ -693,6 +696,7 @@ class AppModel(
         private set
 
     fun refreshAll() {
+        logos.refresh()
         loadOverview()
         if (transactions.isNotEmpty() || txLoaded) reloadTransactions()
         if (spending.value != null) loadSpending()
@@ -703,8 +707,12 @@ class AppModel(
     fun refresh(tab: Tab) {
         when (tab) {
             Tab.Overview -> loadOverview()
-            Tab.Transactions -> reloadTransactions()
+            Tab.Transactions -> {
+                logos.refresh()
+                reloadTransactions()
+            }
             Tab.Spending -> {
+                logos.refresh()
                 loadSpending()
                 loadFixed()
             }
@@ -973,6 +981,7 @@ class AppModel(
         txTotal = 0
         syncJob = null
         syncError = null
+        logos.clear()
     }
 
     private fun <T> load(target: Loadable<T>, block: suspend (GroschenApi) -> T) {
