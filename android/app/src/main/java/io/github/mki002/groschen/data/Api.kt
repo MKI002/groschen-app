@@ -148,6 +148,18 @@ class GroschenApi(
         send<JsonObject>("POST", "alerts/dismiss", buildJsonObject { put("key", key) })
     }
 
+    // --- merchant logos -----------------------------------------------------------------------
+
+    /** The logo each merchant name gets: the user's own choice on the web, else a built-in one. */
+    suspend fun logos(names: List<String>): Map<String, MerchantLogo> =
+        send("POST", "logos/resolve", buildJsonObject { put("names", JsonArray(names.map { JsonPrimitive(it) })) })
+
+    /** A merchant's own picture. [v] changes with every new picture, so an old copy is never shown. */
+    suspend fun logoImage(key: String, v: String): ByteArray {
+        val (code, bytes) = fetch(request("GET", "logos/$key/image", null, mapOf("v" to v), accept = "image/*")) { it.body.bytes() }
+        return checked(code, "logos", bytes) { "" }
+    }
+
     // --- bank sync ----------------------------------------------------------------------------
 
     suspend fun sync(): Job = send("POST", "sync", JsonObject(emptyMap()))
@@ -169,13 +181,24 @@ class GroschenApi(
         json.decodeFromString(serializer, text.ifBlank { "{}" })
 
     private suspend fun call(method: String, path: String, body: JsonElement?, query: Map<String, String>): String {
+        val (code, text) = fetch(request(method, path, body, query)) { r -> r.body.string() }
+        return checked(code, path, text) { text }
+    }
+
+    private fun request(
+        method: String,
+        path: String,
+        body: JsonElement?,
+        query: Map<String, String>,
+        accept: String = "application/json",
+    ): Request {
         val url = base.newBuilder().addPathSegment("api").addPathSegments(path).apply {
             query.forEach { (k, v) -> if (v.isNotEmpty()) addQueryParameter(k, v) }
         }.build()
-        val request = Request.Builder()
+        return Request.Builder()
             .url(url)
             .header("User-Agent", userAgent)
-            .header("Accept", "application/json")
+            .header("Accept", accept)
             .header("X-Groschen-Lang", language())
             .apply {
                 token?.let { header("Cookie", "$SESSION_COOKIE=$it") }
@@ -187,22 +210,27 @@ class GroschenApi(
                 }
             }
             .build()
-        // The answer is read completely on OkHttp's own thread: reading from the network on the
-        // thread that draws the screen makes Android close the app.
-        val (code, text) = try {
-            http.newCall(request).await { r ->
-                cookieFrom(r)
-                r.code to r.body.string()
-            }
-        } catch (e: IOException) {
-            throw ApiException(0, texts().unreachable)
+    }
+
+    // The answer is read completely on OkHttp's own thread: reading from the network on the
+    // thread that draws the screen makes Android close the app.
+    private suspend fun <T> fetch(request: Request, read: (Response) -> T): Pair<Int, T> = try {
+        http.newCall(request).await { r ->
+            cookieFrom(r)
+            r.code to read(r)
         }
-        if (code in 200..299) return text
+    } catch (e: IOException) {
+        throw ApiException(0, texts().unreachable)
+    }
+
+    /** The answer when it is one, else the server's reason as an [ApiException]. */
+    private fun <T> checked(code: Int, path: String, answer: T, text: () -> String): T {
+        if (code in 200..299) return answer
         if (code == 401 && !path.startsWith("login")) {
             token = null
             onLoggedOut?.invoke()
         }
-        throw ApiException(code, messageFrom(text) ?: texts().failed(code))
+        throw ApiException(code, messageFrom(text()) ?: texts().failed(code))
     }
 
     // The session the server hands out at login, or takes back at logout.

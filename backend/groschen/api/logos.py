@@ -1,14 +1,15 @@
 """Logos the user picked for merchants. The built-in logos ship with the web app; only the
-user's own choices (a picture, another built-in logo, or the letter) are kept here."""
+user's own choices (a picture, another built-in logo, or the letter) are kept here. The phone app
+asks /logos/resolve which logo each merchant gets, since it has no copy of the built-in ones."""
 
 import re
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from .. import db, i18n
+from .. import brand_logos, db, i18n
 from .deps import current_user
 
 router = APIRouter(dependencies=[Depends(current_user)])
@@ -44,6 +45,32 @@ def list_logos():
     with db.session() as conn:
         rows = conn.execute("SELECT key, kind, slug, updated_at FROM vendor_logos").fetchall()
     return {r["key"]: {"kind": r["kind"], "slug": r["slug"], "v": r["updated_at"]} for r in rows}
+
+
+class Names(BaseModel):
+    names: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(max_length=500)
+
+
+@router.post("/logos/resolve")
+def resolve(body: Names):
+    """The logo each shown merchant name gets, as the web app picks it: the user's own choice
+    first (a picture, another built-in logo, or just the letter), else the built-in logo."""
+    with db.session() as conn:
+        own = {r["key"]: r for r in conn.execute("SELECT key, kind, slug, updated_at FROM vendor_logos")}
+    out = {}
+    for name in dict.fromkeys(body.names):
+        key = brand_logos.logo_key(name)
+        choice = own.get(key) if key else None
+        if choice and choice["kind"] == "image":
+            # Loaded from /logos/{key}/image?v=...; a new picture gets a new address.
+            out[name] = {"kind": "image", "key": key, "v": choice["updated_at"]}
+            continue
+        if choice and choice["kind"] == "letter":
+            out[name] = {"kind": "letter"}
+            continue
+        slug = choice["slug"] if choice and choice["slug"] else brand_logos.auto_slug(name)
+        out[name] = (slug and brand_logos.brand(slug)) or {"kind": "letter"}
+    return out
 
 
 class Choice(BaseModel):
