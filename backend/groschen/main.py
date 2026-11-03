@@ -12,9 +12,17 @@ from .api import auth, bank, data, logos, manage
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_HEADER = "x-groschen"
 
+# Google Images' own picture servers. When a logo is dragged in from there, the browser (never the
+# server) loads that one picture so it can be cropped; no other outside address may be loaded.
+BROWSER_IMAGE_HOSTS = " ".join(
+    [f"https://encrypted-tbn{n}.gstatic.com" for n in range(4)]
+    + [f"https://lh{n}.googleusercontent.com" for n in range(3, 7)]
+)
+
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        f"img-src 'self' data: blob: {BROWSER_IMAGE_HOSTS}; "
         "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
         "frame-ancestors 'none'"
     ),

@@ -56,3 +56,63 @@ def test_bundled_logos_are_public_domain_and_complete():
     assert index["exact"]["CLAUDE"] == "claude"
     for name in ("MAX", "CLAUDE", "MARKUS", "THOMAS"):
         assert name not in index["any"] and name not in index["lead"]
+
+
+def test_the_page_may_load_pictures_only_from_google_images(client):  # noqa: F811
+    # A logo dragged in from Google Images is loaded by the browser; the server fetches nothing,
+    # and the page may still only talk to Groschen itself.
+    csp = dict(p.strip().split(" ", 1) for p in client.get("/api/health").headers["content-security-policy"].split(";"))
+    assert csp["connect-src"] == "'self'"
+    outside = [s for s in csp["img-src"].split() if s.startswith("https://")]
+    assert outside and all(s.endswith((".gstatic.com", ".googleusercontent.com")) and "*" not in s for s in outside)
+
+
+def test_the_phone_app_learns_which_logo_each_merchant_gets(user):  # noqa: F811
+    assert user.put("/api/logos/ecenterbeispiel", json={"kind": "letter"}, headers=H).status_code == 200
+    assert user.put("/api/logos/meinbacker", json={"kind": "brand", "slug": "edeka"}, headers=H).status_code == 200
+    picture = {"file": ("l.png", PNG, "image/png")}
+    assert user.post("/api/logos/linsenwerkeurope/image", files=picture, headers=H).status_code == 200
+    names = ["PayPal", "PAYPAL *NETFLIX", "Netflix.com", "E-Center Beispiel", "Mein Bäcker", "LINSENWERK Europe"]
+    names.append("Schreinerei Huber")
+    got = user.post("/api/logos/resolve", json={"names": names}, headers=H).json()
+    assert {n: got[n].get("slug") or got[n]["kind"] for n in names} == {
+        "PayPal": "paypal",
+        "PAYPAL *NETFLIX": "netflix",
+        "Netflix.com": "netflix",
+        "E-Center Beispiel": "letter",  # the user's own choice beats the built-in Edeka logo
+        "Mein Bäcker": "edeka",
+        "LINSENWERK Europe": "image",
+        "Schreinerei Huber": "letter",
+    }
+    netflix = got["Netflix.com"]
+    assert netflix["hex"].startswith("#") and netflix["ink"] in ("#FFFFFF", "#111214") and netflix["path"][0] in "Mm"
+    assert got["LINSENWERK Europe"]["key"] == "linsenwerkeurope" and got["LINSENWERK Europe"]["v"]
+    assert user.post("/api/logos/resolve", json={"names": ["x" * 201]}, headers=H).status_code == 422
+
+
+def test_server_matching_follows_the_web_app():
+    from groschen import brand_logos
+
+    # The same names as the web app's matcher (frontend/src/lib/logos.ts autoSlug).
+    expect = {
+        "PayPal": "paypal",
+        "PayPal Europe": "paypal",
+        "PayPal *Spotify AB": "spotify",
+        "Visa": "visa",
+        "Klarna": "klarna",
+        "VISA REWE MARKT": "rewe",
+        "E-Center Beispiel": "edeka",
+        "Amazon": None,
+        "Muster Bau": None,
+        "Shell Station 123": "shell",
+    }
+    assert {n: brand_logos.auto_slug(n) for n in expect} == expect
+    assert brand_logos.logo_key("Mein Bäcker GmbH") == "meinbackergmbh"
+
+
+def test_drawings_reach_the_phone_with_every_part_spaced():
+    from groschen import brand_logos
+
+    # An arc's two flags may run into the next number in SVG; spelled out, any phone reads it.
+    assert brand_logos.spaced("M5.398 0a1 1 0 01-2.5.5zm1,2l-1-1") == "M 5.398 0 a 1 1 0 0 1 -2.5 .5 z m 1 2 l -1 -1"
+    assert brand_logos.spaced("M1 1 x") is None
