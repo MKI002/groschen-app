@@ -562,6 +562,11 @@ button.barrow:hover .go{color:var(--ink)}
 .txl-row.fold .txl-sub{display:inline-flex;align-items:center;gap:4px}
 .txl-row.fold .txl-sub svg{transition:transform .2s var(--ease-out)}
 .txl-row.fold.open .txl-sub svg{transform:rotate(180deg)}
+/* Money that only moved between own accounts: quiet, no sign, the way it went instead of the account. */
+.txl-row.move .txl-nm{color:var(--ink-2)}
+.txl-row.move .txl-amt.moved{color:var(--muted);font-weight:600}
+.txl-av.swap,.txl-row.move.fold .txl-av:not(.logo):not(.letter){background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink-2)}
+.txl-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .txl-row.inner{margin-left:22px;padding-left:12px;border-left:1px dashed var(--line-2);border-radius:0 12px 12px 0}
 .txl-row.inner .txl-av{width:28px;height:28px;font-size:12px}
 .txl-cat{display:flex;align-items:center;gap:6px;min-width:0}
@@ -596,9 +601,11 @@ div.txsum{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
 .txhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
 .txhead-amt{font-size:34px;font-weight:650;line-height:1.05;letter-spacing:-.03em;color:var(--ink)}
 .txhead-amt.pos{color:var(--good)}
+.txhead-amt.moved{color:var(--ink-2)}
 .txhead .muted{font-size:13px}
 .why{display:flex;align-items:center;gap:8px;margin:-4px 0 0;font-size:13px;color:var(--good)}
 .why svg{flex:none}
+.why.moved{color:var(--ink-2)}
 .txraw{display:grid;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
 .setrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px;padding:4px 0;font-size:13.5px;color:var(--ink-2)}
 .setrow.tight{padding:2px 0}
@@ -1786,6 +1793,7 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
   .txl-row>.txl-main{grid-area:main}
   .txl-row>.txl-cat{grid-area:cat}
   .txl-row>.txl-amt{grid-area:amt}
+  .txl-row.inner .txl-cat:empty{display:none}
   .txl-cat .catchip{height:21px;font-size:11.5px}
   .txcard{padding:6px 8px 12px}
   .subrow{grid-template-columns:36px minmax(0,1fr) auto;gap:12px}
