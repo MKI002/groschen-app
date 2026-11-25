@@ -428,9 +428,14 @@ export function YearHeatmap({ year, days, onPick }: { year: number; days: DayAmo
   const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const cols = Math.ceil((n + lead) / 7);
   // The squares grow with the room there is, up to a point; beyond that the year sits centred.
-  const [box, W] = useChartWidth<HTMLDivElement>(false, 640);
-  const left = 34, top = 20, stepX = Math.min((W - left - 4) / cols, 32), cell = stepX * 0.8;
-  const ox = Math.max(0, (W - left - cols * stepX - 4) / 2) + left, H = top + 7 * stepX + 2;
+  // On a phone the year folds into two bands, January to June above July to December, so the
+  // whole year fits without scrolling sideways.
+  const [box, W] = useChartWidth<HTMLDivElement>(false, 300);
+  const bands = W < 600 ? 2 : 1, perBand = Math.ceil(cols / bands);
+  const left = 34, top = 20, stepX = Math.min((W - left - 4) / perBand, 32), cell = stepX * 0.8;
+  const bandH = top + 7 * stepX + (bands > 1 ? 10 : 2);
+  const ox = Math.max(0, (W - left - perBand * stepX - 4) / 2) + left, H = bandH * bands;
+  const place = (col: number) => [col % perBand, Math.floor(col / perBand)] as const;
   const iso = (i: number) => {
     const d = new Date(year, 0, 1 + i);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -439,6 +444,7 @@ export function YearHeatmap({ year, days, onPick }: { year: number; days: DayAmo
   const rects = [];
   for (let i = 0; i < n; i++) {
     const pos = i + lead, col = Math.floor(pos / 7), row = pos % 7;
+    const [bc, band] = place(col);
     const d = iso(i);
     if (d.endsWith("-01")) monthCols.push([col, monthShort(d.slice(0, 7))]);
     const v = byDate.get(d);
@@ -449,8 +455,8 @@ export function YearHeatmap({ year, days, onPick }: { year: number; days: DayAmo
         key={d}
         className={`yh-cell l${lvl}${future ? " future" : ""}`}
         style={{ ["--d" as string]: col + row }}
-        x={ox + col * stepX}
-        y={top + row * stepX}
+        x={ox + bc * stepX}
+        y={band * bandH + top + row * stepX}
         width={cell}
         height={cell}
         rx={cell / 4}
@@ -468,13 +474,18 @@ export function YearHeatmap({ year, days, onPick }: { year: number; days: DayAmo
   return (
     <div className="yh" ref={wrap} onPointerLeave={() => setTip(null)}>
       <div className="scroll" ref={box} onScroll={() => setTip(null)}>
-      <svg key={year} className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 640 }} role="img" aria-label={tr("yh.label", { year })}>
-        {monthCols.map(([c, m]) => (
-          <text key={m} x={ox + c * stepX} y={12}>{m}</text>
-        ))}
-        {[0, 2, 4].map((r) => (
-          <text key={r} x={ox - 6} y={top + r * stepX + cell / 2 + 4} textAnchor="end">{wd(r)}</text>
-        ))}
+      <svg key={year} className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={tr("yh.label", { year })}>
+        {monthCols.map(([c, m]) => {
+          let [bc, band] = place(c);
+          // A month that starts in the last column of a band is labelled where the next band begins.
+          if (bands > 1 && bc === perBand - 1 && band < bands - 1) [bc, band] = [0, band + 1];
+          return <text key={m} x={ox + bc * stepX} y={band * bandH + 12}>{m}</text>;
+        })}
+        {Array.from({ length: bands }, (_, band) =>
+          [0, 2, 4].map((r) => (
+            <text key={`${band}-${r}`} x={ox - 6} y={band * bandH + top + r * stepX + cell / 2 + 4} textAnchor="end">{wd(r)}</text>
+          )),
+        )}
         {rects}
       </svg>
       </div>
@@ -586,27 +597,37 @@ export function Heatmap({ returns, mark = [] }: { returns: { month: string; r: n
     byYear.get(y)!.set(m, x.r);
   }
   const years = [...byYear.keys()].sort();
-  // Columns share the width up to a point; beyond that the table sits centred.
-  const [box, W] = useChartWidth<SVGSVGElement>(false, 600);
-  const ch = 36, t = 24, cw = Math.min((W - 52) / 12, 110), l = Math.max(48, (W - 12 * cw - 4) / 2), H = t + years.length * ch + 4;
+  // Columns share the width up to a point; beyond that the table sits centred. On a phone a year
+  // takes two rows of six months, so every month stays on screen without scrolling sideways.
+  const [box, W] = useChartWidth<SVGSVGElement>(false, 300);
+  const narrow = W < 560;
+  const cols = narrow ? 6 : 12, rowsPer = 12 / cols;
+  const ch = narrow ? 46 : 36, t = narrow ? 4 : 24;
+  const lw = narrow ? 40 : 52;
+  const cw = Math.min((W - lw) / cols, 110), l = Math.max(narrow ? 40 : 48, (W - cols * cw - 4) / 2), H = t + years.length * rowsPer * ch + 4;
   const names = Array.from({ length: 12 }, (_, i) => monthShort(`2000-${String(i + 1).padStart(2, "0")}`));
   return (
-    <svg ref={box} className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 600 }} role="img" aria-label={tr("chart.heatmap")}>
-      {names.map((m, i) => <text key={m} x={l + i * cw + cw / 2} y={14} textAnchor="middle">{m}</text>)}
+    <svg ref={box} className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={tr("chart.heatmap")}>
+      {!narrow && names.map((m, i) => <text key={m} x={l + i * cw + cw / 2} y={14} textAnchor="middle">{m}</text>)}
       {years.map((y, yi) => (
         <g key={y}>
-          <text x={l - 10} y={t + yi * ch + ch / 2 + 4} textAnchor="end">{y}</text>
+          <text x={l - 10} y={t + yi * rowsPer * ch + ch / 2 + 4} textAnchor="end">{y}</text>
           {names.map((m, mi) => {
-            const x = l + mi * cw + 2, yy = t + yi * ch + 2, w = cw - 4, h = ch - 4;
+            const row = yi * rowsPer + Math.floor(mi / cols), col = mi % cols;
+            const x = l + col * cw + 2, yy = t + row * ch + 2, w = cw - 4, h = ch - 4;
             const r = byYear.get(y)!.get(mi + 1);
-            if (r === undefined) return <rect key={m} x={x} y={yy} width={w} height={h} rx={6} fill="none" stroke="var(--line)" strokeDasharray="3 3" />;
-            const a = Math.min(Math.abs(r) / 0.07, 1) * 0.85 + 0.12;
+            // On a phone each cell names its month, since there is no header row for the second half.
+            const a = r === undefined ? 0 : Math.min(Math.abs(r) / 0.07, 1) * 0.85 + 0.12;
+            const label = narrow && <text className="cell-m" x={x + w / 2} y={yy + 13} textAnchor="middle" style={{ fill: a > 0.55 ? "#fff" : "var(--ink)" }}>{m}</text>;
+            const vy = narrow ? yy + h / 2 + 10 : yy + h / 2 + 4;
+            if (r === undefined) return <g key={m}><rect x={x} y={yy} width={w} height={h} rx={6} fill="none" stroke="var(--line)" strokeDasharray="3 3" />{label}</g>;
             return (
               <g key={m}>
                 <rect className="hm" style={{ ["--i" as string]: yi * 12 + mi }} x={x} y={yy} width={w} height={h} rx={6} fill={r >= 0 ? "var(--good)" : "var(--bad)"} fillOpacity={a.toFixed(2)}>
                   <title>{`${m} ${y}: ${pctS(r)}`}</title>
                 </rect>
-                <text className="cell" x={x + w / 2} y={yy + h / 2 + 4} textAnchor="middle" style={{ fill: a > 0.55 ? "#fff" : "var(--ink)" }}>
+                {label}
+                <text className="cell" x={x + w / 2} y={vy} textAnchor="middle" style={{ fill: a > 0.55 ? "#fff" : "var(--ink)" }}>
                   {`${r > 0 ? "+" : r < 0 ? "\u2212" : ""}${num(Math.abs(r) * 100, 1)}`}
                 </text>
                 {mark.includes(`${y}-${String(mi + 1).padStart(2, "0")}`) && (

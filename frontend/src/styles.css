@@ -1003,6 +1003,7 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .chart .lbl{fill:var(--ink);font-weight:600;font-size:13px}
 .chart .lbl.strong{font-weight:700}
 .chart .cell{font-size:11.5px;font-weight:600}
+.chart .cell-m{font-size:9.5px;font-weight:600;opacity:.85;letter-spacing:.02em}
 .chart.sankey text{font-size:13px}
 .chart.sankey .lbl{font-size:14px}
 .chart.sm text,.chart.sm .lbl{font-size:15px}

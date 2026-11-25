@@ -201,3 +201,16 @@ Plan: round 4 the daily tasks (1, 2, 3), round 5 phone charts (4), round 6 polis
 **Blind judge B** (4 pairs, `reviews/round-4/judge-b.md`, against the original): the new version won all 4 ("shows the switch and its state next to Save on every screen size, which makes it easier and safer"). Cost it named: on a phone the pinned footer covers a little more of the category list.
 
 **Kept**: second try plus the period menu. **Not changed, needs Markus:** the switch is still on by default (a deliberate self-learning choice); two reviewers want it off by default.
+
+## Round 5: the whole year on a phone
+
+**Theme.** Pass-3 backlog #4: on a phone the year heatmap (Spending) and the monthly returns (Depot › Analysis, ETF page) stopped at June, with the recent months behind a sideways scroll nobody could see. Round 3 had tried opening the scroll at the latest end and lost (it hid the legend's outlined months and the weekday labels); this round folds the charts instead.
+
+**Built.**
+- Monthly returns: below 560 px a year takes two rows of six; each tile names its month (no header row for the second half). Desktop unchanged.
+- Year heatmap: below 600 px the year folds into two bands, January–June above July–December, each with its weekday labels; a month starting in a band's last column is labelled at the start of the next band. Desktop unchanged.
+- Neither chart scrolls sideways any more on a phone.
+
+**Blind judge** (7 pairs, [`reviews/round-5/judge.md`](reviews/round-5/judge.md)): the folded version won all 4 pairs that differ; the 3 desktop/ETF control pairs were identical, as intended. One weakness named: the small month labels were hard to read on light-green tiles; they now switch to white on strong tiles like the values do (rechecked on `17-inv-analysis.phone.de`).
+
+**Kept.**

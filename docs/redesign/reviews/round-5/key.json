@@ -1,0 +1,30 @@
+{
+ "pair01": {
+  "file": "07-spending.phone.de.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "07-spending.phone.en.png",
+  "after": "A"
+ },
+ "pair03": {
+  "file": "17-inv-analysis.phone.de.png",
+  "after": "B"
+ },
+ "pair04": {
+  "file": "17-inv-analysis.phone.en.png",
+  "after": "B"
+ },
+ "pair05": {
+  "file": "19-etf.phone.de.png",
+  "after": "A"
+ },
+ "pair06": {
+  "file": "07-spending.desk.en.png",
+  "after": "B"
+ },
+ "pair07": {
+  "file": "17-inv-analysis.desk.de.png",
+  "after": "B"
+ }
+}
