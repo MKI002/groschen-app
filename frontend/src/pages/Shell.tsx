@@ -207,6 +207,10 @@ function PeriodPicker() {
     (period.preset === "month"
       ? period.anchor.slice(0, 7) >= `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
       : Number(period.anchor.slice(0, 4)) >= now.getFullYear());
+  // "Last month" is the month before this one: the question asked most after "this month".
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-01`;
+  const lastMonthOn = period.preset === "month" && period.anchor === lastMonth;
   return (
     <div className={`period${steppable ? " steps" : ""}`}>
       {steppable && (
@@ -214,13 +218,13 @@ function PeriodPicker() {
           <Icon name="chevRight" size={15} className="flip" />
         </button>
       )}
-      <Dropdown<Period["preset"]>
+      <Dropdown<Period["preset"] | "lastMonth">
         label={t("period.label")}
-        value={period.preset}
+        value={lastMonthOn ? "lastMonth" : period.preset}
         display={periodLabel(period)}
         icon="calendar"
-        options={PRESETS.map(([k, label]) => [k, t(label)])}
-        onChange={(preset) => setPeriod({ preset, anchor: null })}
+        options={[[PRESETS[0][0], t(PRESETS[0][1])], ["lastMonth", t("period.lastMonth")], ...PRESETS.slice(1).map(([k, label]): [Period["preset"], string] => [k, t(label)])]}
+        onChange={(preset) => setPeriod(preset === "lastMonth" ? { preset: "month", anchor: lastMonth } : { preset, anchor: null })}
       />
       {steppable && (
         <button className="ib" aria-label={t("period.next")} disabled={atEnd} onClick={() => setPeriod(shift(period, 1))}>

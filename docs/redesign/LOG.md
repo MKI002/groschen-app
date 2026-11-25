@@ -185,3 +185,19 @@ No screen got worse in any reviewer's eyes; no reviewer raised the section strip
 | 10 | Sunburst repeats the bar list; heatmap colour scale has no order | dataviz, designer | needs Markus / later |
 
 Plan: round 4 the daily tasks (1, 2, 3), round 5 phone charts (4), round 6 polish (6, 7, 8), then the full pass.
+
+## Round 4: two daily tasks
+
+**Theme.** Pass-3 backlog #1 (the "every transaction from this merchant" switch is out of sight on a phone, and on by default) and #2 ("what did I pay last month" takes 5–7 steps). Plus capture: the itemised "what comes off before payday" dialog behind the hero link (`34-payday-details`), which reviewers never saw; and the category drill-down now shows Groceries instead of an empty parent category.
+
+**Built, first try.**
+- Edit dialog: the switch moved above the category list.
+- Period menu: "This month" (was "Month") and a new "Last month" right under it; "Last month" is the month preset anchored one month back, so no new API parameter.
+
+**Blind judge A** (5 pairs, `reviews/round-4/judge-a.md`): period menu won on phone and desktop; the edit dialog won on both phones but lost narrowly on desktop, where the old position happened to sit just above Save, which the judge preferred ("read once and forgotten" at the top).
+
+**Built, second try.** The switch lives in the dialog's sticky footer, on its own line above "Everything with …" and Save, with a hairline between; same on every screen size.
+
+**Blind judge B** (4 pairs, `reviews/round-4/judge-b.md`, against the original): the new version won all 4 ("shows the switch and its state next to Save on every screen size, which makes it easier and safer"). Cost it named: on a phone the pinned footer covers a little more of the category list.
+
+**Kept**: second try plus the period menu. **Not changed, needs Markus:** the switch is still on by default (a deliberate self-learning choice); two reviewers want it off by default.

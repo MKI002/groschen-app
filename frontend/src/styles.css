@@ -406,6 +406,7 @@ button.barrow:hover .go{color:var(--ink)}
 .modal>.card-h{flex-wrap:nowrap;align-items:flex-start}
 .modal>.card-h h3{flex:1;min-width:0;font-weight:680;font-size:21px;line-height:1.2;letter-spacing:-.02em}
 .modal .actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;padding-top:4px}
+.modal .actions .act-switch{flex:1 0 100%;margin:0 0 6px;padding:0 0 10px;border-bottom:1px solid var(--line)}
 /* in a long window the title and the buttons stay in view while the middle scrolls */
 /* Sticky offsets count from inside the padding, so they are pulled back by it; otherwise the header sits on top of the first row. */
 .modal>.card-h{position:sticky;top:calc(-1 * var(--mpy));z-index:3;margin:calc(-1 * var(--mpy)) calc(-1 * var(--mpx)) 0;padding:var(--mpy) var(--mpx) 4px;background:var(--surface)}

@@ -1,0 +1,18 @@
+{
+ "pair01": {
+  "file": "05-transactions-edit.phone.de.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "05-transactions-edit.desk.en.png",
+  "after": "A"
+ },
+ "pair03": {
+  "file": "05-transactions-edit.phone.en.png",
+  "after": "A"
+ },
+ "pair04": {
+  "file": "05-transactions-edit.desk.de.png",
+  "after": "B"
+ }
+}
