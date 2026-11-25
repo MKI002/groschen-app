@@ -7,7 +7,7 @@ import { InvestPayments } from "../components/InvestPayments";
 import { PayoutTag } from "../components/Payout";
 import { Icon } from "../components/Icons";
 import { Odometer } from "../components/Motion";
-import { Card, ChangePill, Dropdown, Empty, ErrorNote, Loading, Spinner, Tabs, useApi, useSyncEvents, useToast } from "../components/UI";
+import { Card, ChangePill, Dropdown, Empty, ErrorNote, Loading, Spinner, useApi, useSyncEvents, useToast } from "../components/UI";
 import { useZoom } from "../components/Zoom";
 import { getRegion, t as tr, useT } from "../i18n";
 import { germanTax } from "../lib/regions";
@@ -15,7 +15,7 @@ import { api } from "../lib/api";
 import { clipMonths, periodBounds, useApp, type Period } from "../lib/app";
 import { gainBetween, monthlyReturns, performance, periodSpan, thin, timeOf, xirrBetween, type DayPoint } from "../lib/depot";
 import { dateShort, dayMonth, eur, eur0, fundName, monthLabel, monthLong, pct, pctS } from "../lib/format";
-import { navigate, redirect, useSearch } from "../lib/router";
+import { navigate, useSearch } from "../lib/router";
 import { OldAddress } from "./Recurring";
 import type { Holding, Investments as Inv } from "../lib/types";
 import { PageHeader, periodLabel } from "./Shell";
@@ -467,21 +467,7 @@ export default function Investments({ page }: { page: Tab }) {
   return (
     <>
       <PageHeader eyebrow={crumbs} title={title} period={tab === "overview" || tab === "analysis"} />
-      <div className="phone-only">
-        <Tabs<Tab>
-          label={t("inv.tabs")}
-          ids="inv"
-          value={tab}
-          onChange={(v) => redirect(pathOf(v))}
-          options={[
-            ["overview", t("inv.tab.overview")],
-            ["forecast", t("inv.tab.forecast")],
-            ["analysis", t("inv.tab.analysis")],
-            ["payments", t("inv.tab.payments")],
-          ]}
-        />
-      </div>
-      <div className="tabpanel" role="tabpanel" id={`inv-panel-${tab}`} aria-labelledby={`inv-tab-${tab}`} key={tab}>
+      <div className="tabpanel" key={tab}>
         {tab === "overview" && <DepotOverview data={data} />}
         {tab === "forecast" && <Forecast start={data.value} paidIn={data.paid_in || null} investing={data.investing} inputs={data.forecast} />}
         {tab === "analysis" && <Analysis data={data} />}

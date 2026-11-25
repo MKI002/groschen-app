@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t as tr, useT } from "../i18n";
+import { t as tr, useT, type Key } from "../i18n";
 import { api } from "../lib/api";
 import { dayMonth, eur } from "../lib/format";
 import type { SavedDest, SavedGroup, SavedItem, SavedTo } from "../lib/types";
@@ -68,9 +68,10 @@ export function SavedBar({ data, onOpen }: { data: SavedTo; onOpen: () => void }
   const total = pos.reduce((a, p) => a + p.amount, 0);
   const invested = groups.find((g) => g.key === "invested")?.amount ?? 0;
   const stays = groups.find((g) => g.key === "stays")?.amount ?? 0;
+  // Every part the bar shows gets its words, so the line adds up to the big number.
   const line =
-    invested > 0.5 && stays > 0.5
-      ? t("sv.tile", { etf: eur(invested), stays: eur(stays) })
+    pos.length > 1
+      ? pos.map((p) => t(`sv.part.${p.key}` as Key, { amount: eur(p.amount) })).join(" · ")
       : invested > 0.5
         ? t("sv.tile.etf", { etf: eur(invested) })
         : stays > 0.5 && pos.length === 1

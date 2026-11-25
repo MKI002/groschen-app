@@ -126,6 +126,13 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
       onClose={onClose}
       actions={
         <>
+          {/* Next to Save, where it is seen on every screen size before a pick changes every transaction from this merchant. */}
+          {!backFor && (
+            <div className="setrow tight act-switch">
+              <span>{t("tx.similar")}</span>
+              <Switch checked={similar} onChange={setSimilar} label={t("tx.similar")} />
+            </div>
+          )}
           <button
             className="btn ghost"
             onClick={() => {
@@ -189,10 +196,6 @@ export function EditTx({ tx, onClose, onSaved }: { tx: Tx; onClose: () => void; 
           <div className="field">
             <span className="label">{t("tx.category")}</span>
             <CategoryPicker value={cat} onPick={setCat} amount={tx.amount} />
-          </div>
-          <div className="setrow tight">
-            <span>{t("tx.similar")}</span>
-            <Switch checked={similar} onChange={setSimilar} label={t("tx.similar")} />
           </div>
           <div className="setrow tight">
             <span>{t("tx.sub")}</span>

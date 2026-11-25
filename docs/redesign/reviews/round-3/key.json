@@ -1,0 +1,46 @@
+{
+ "pair01": {
+  "file": "22-settings-hints.phone.de.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "20-settings-bank.phone.de.png",
+  "after": "B"
+ },
+ "pair03": {
+  "file": "41-wizard-country.phone.de.png",
+  "after": "A"
+ },
+ "pair04": {
+  "file": "02-transactions.phone.de.png",
+  "after": "B"
+ },
+ "pair05": {
+  "file": "07-spending.phone.de.png",
+  "after": "A"
+ },
+ "pair06": {
+  "file": "17-inv-analysis.phone.de.png",
+  "after": "B"
+ },
+ "pair07": {
+  "file": "02-transactions.desk.en.png",
+  "after": "B"
+ },
+ "pair08": {
+  "file": "01-overview.desk.en.png",
+  "after": "A"
+ },
+ "pair09": {
+  "file": "11-recurring-list.desk.en.png",
+  "after": "A"
+ },
+ "pair10": {
+  "file": "15-investments.desk.en.png",
+  "after": "B"
+ },
+ "pair11": {
+  "file": "19-etf.phone.en.png",
+  "after": "A"
+ }
+}

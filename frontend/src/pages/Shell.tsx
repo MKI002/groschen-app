@@ -3,7 +3,7 @@ import { TanPrompt } from "../components/BankForm";
 import { confirmBankLogin, DialogHost, openDialog } from "../components/Dialogs";
 import { Icon, Logo } from "../components/Icons";
 import { usePointerEffects } from "../components/Motion";
-import { Dropdown, Spinner, useToast } from "../components/UI";
+import { Dropdown, Spinner, Tabs, useToast } from "../components/UI";
 import { getRegion, locale, t, useT, type Key } from "../i18n";
 import { fintsCountry } from "../lib/regions";
 import { useApp, type Period } from "../lib/app";
@@ -32,8 +32,8 @@ export const MAIN_NAV: NavItem[] = [
   { to: "/recurring", icon: "repeat", label: "nav.recurring", child: 1 },
   { to: "/networth", icon: "vault", label: "nav.networth" },
   { to: "/investments", icon: "etf", label: "nav.investments", child: 1 },
-  { to: "/investments/forecast", icon: "trend", label: "inv.tab.forecast", child: 2 },
   { to: "/investments/analysis", icon: "spark", label: "inv.tab.analysis", child: 2 },
+  { to: "/investments/forecast", icon: "trend", label: "inv.tab.forecast", child: 2 },
   { to: "/investments/payments", icon: "coin", label: "inv.tab.payments", child: 2 },
 ];
 
@@ -207,6 +207,10 @@ function PeriodPicker() {
     (period.preset === "month"
       ? period.anchor.slice(0, 7) >= `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
       : Number(period.anchor.slice(0, 4)) >= now.getFullYear());
+  // "Last month" is the month before this one: the question asked most after "this month".
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-01`;
+  const lastMonthOn = period.preset === "month" && period.anchor === lastMonth;
   return (
     <div className={`period${steppable ? " steps" : ""}`}>
       {steppable && (
@@ -214,13 +218,13 @@ function PeriodPicker() {
           <Icon name="chevRight" size={15} className="flip" />
         </button>
       )}
-      <Dropdown<Period["preset"]>
+      <Dropdown<Period["preset"] | "lastMonth">
         label={t("period.label")}
-        value={period.preset}
+        value={lastMonthOn ? "lastMonth" : period.preset}
         display={periodLabel(period)}
         icon="calendar"
-        options={PRESETS.map(([k, label]) => [k, t(label)])}
-        onChange={(preset) => setPeriod({ preset, anchor: null })}
+        options={[[PRESETS[0][0], t(PRESETS[0][1])], ["lastMonth", t("period.lastMonth")], ...PRESETS.slice(1).map(([k, label]): [Period["preset"], string] => [k, t(label)])]}
+        onChange={(preset) => setPeriod(preset === "lastMonth" ? { preset: "month", anchor: lastMonth } : { preset, anchor: null })}
       />
       {steppable && (
         <button className="ib" aria-label={t("period.next")} disabled={atEnd} onClick={() => setPeriod(shift(period, 1))}>
@@ -266,6 +270,31 @@ function Page({ path }: { path: string }) {
     default:
       return <OldAddress to="/" />;
   }
+}
+
+// On a phone the bottom bar holds the top places only. Where a place has sub-pages, one strip
+// under the top bar lists them, the same entries as the sidebar, so sub-pages work alike everywhere.
+const STRIPS: { on: (path: string) => boolean; items: [string, Key][] }[] = [
+  { on: (p) => p === "/spending" || p.startsWith("/spending/") || p.startsWith("/groups/") || p === "/recurring", items: [["/spending", "nav.spending"], ["/recurring", "nav.recurring"]] },
+  { on: (p) => p === "/networth", items: [["/networth", "nav.networth"], ["/investments", "nav.investments"]] },
+  {
+    // An ETF page has its own tabs and a way back to the depot; a second strip would only compete.
+    on: (p) => p.startsWith("/investments") && !p.startsWith("/investments/etf/"),
+    items: [["/investments", "nav.investments"], ["/investments/analysis", "inv.tab.analysis"], ["/investments/forecast", "inv.tab.forecast"], ["/investments/payments", "inv.tab.payments"]],
+  },
+];
+
+function SectionStrip({ path }: { path: string }) {
+  const t = useT();
+  const strip = STRIPS.find((s) => s.on(path));
+  if (!strip) return null;
+  // A drill-down counts as the place it belongs to.
+  const value = [...strip.items].reverse().find(([to]) => navOn(path, to) || (to === "/spending" && path.startsWith("/spending/")))?.[0] ?? strip.items[0][0];
+  return (
+    <div className="phone-only substrip">
+      <Tabs<string> nav label={t("nav.section")} value={value} onChange={(to) => navigate(to)} options={strip.items.map(([to, label]) => [to, t(label)])} />
+    </div>
+  );
 }
 
 // The 90-day login reminder, on every page but Settings once it is due.
@@ -340,6 +369,7 @@ export default function Shell() {
       </div>
       <main className="main">
         <LoginBanner />
+        <SectionStrip path={path} />
         <div className="page" key={path}>
           <Page path={path} />
         </div>

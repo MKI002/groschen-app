@@ -1,0 +1,38 @@
+{
+ "pair01": {
+  "file": "01-overview.desk.en.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "03-transactions-review.desk.en.png",
+  "after": "A"
+ },
+ "pair03": {
+  "file": "09-drill-group.desk.en.png",
+  "after": "A"
+ },
+ "pair04": {
+  "file": "12-recurring-calendar.desk.en.png",
+  "after": "A"
+ },
+ "pair05": {
+  "file": "12-recurring-calendar.phone.de.png",
+  "after": "B"
+ },
+ "pair06": {
+  "file": "15-investments.desk.de.png",
+  "after": "A"
+ },
+ "pair07": {
+  "file": "18-inv-payments.desk.en.png",
+  "after": "A"
+ },
+ "pair08": {
+  "file": "18-inv-payments.phone.en.png",
+  "after": "A"
+ },
+ "pair09": {
+  "file": "21-settings-categories.desk.en.png",
+  "after": "B"
+ }
+}

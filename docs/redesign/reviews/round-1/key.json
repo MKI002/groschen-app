@@ -1,0 +1,42 @@
+{
+ "pair01": {
+  "file": "07-spending.phone.de.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "11-recurring-list.phone.de.png",
+  "after": "B"
+ },
+ "pair03": {
+  "file": "14-networth.phone.de.png",
+  "after": "B"
+ },
+ "pair04": {
+  "file": "15-investments.phone.de.png",
+  "after": "B"
+ },
+ "pair05": {
+  "file": "17-inv-analysis.phone.de.png",
+  "after": "B"
+ },
+ "pair06": {
+  "file": "19-etf.phone.de.png",
+  "after": "B"
+ },
+ "pair07": {
+  "file": "09-drill-group.phone.en.png",
+  "after": "B"
+ },
+ "pair08": {
+  "file": "09-drill-group.desk.en.png",
+  "after": "A"
+ },
+ "pair09": {
+  "file": "15-investments.phone.en.png",
+  "after": "A"
+ },
+ "pair10": {
+  "file": "13-recurring-orbit.phone.en.png",
+  "after": "A"
+ }
+}

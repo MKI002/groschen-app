@@ -1,0 +1,22 @@
+{
+ "pair01": {
+  "file": "05-transactions-edit.phone.de.png",
+  "after": "A"
+ },
+ "pair02": {
+  "file": "05-transactions-edit.desk.en.png",
+  "after": "B"
+ },
+ "pair03": {
+  "file": "05-transactions-edit.phone.en.png",
+  "after": "A"
+ },
+ "pair04": {
+  "file": "33-period-menu.phone.de.png",
+  "after": "B"
+ },
+ "pair05": {
+  "file": "33-period-menu.desk.en.png",
+  "after": "A"
+ }
+}

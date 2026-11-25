@@ -15,7 +15,7 @@
   color-scheme:dark;
   --bg:#0A0B0D; --bg-2:#0D0E11; --surface:#121418; --surface-2:#171A1F; --surface-3:#1D2026; --sunk:#0E1013;
   --hover:rgba(255,255,255,.035); --line:rgba(255,255,255,.065); --line-2:rgba(255,255,255,.1);
-  --ink:#ECEDEF; --ink-2:#C9CCD2; --muted:#8D919A; --faint:#5E636C;
+  --ink:#ECEDEF; --ink-2:#C9CCD2; --muted:#8D919A; --faint:#7E838C;
   --accent:#D6B46E; --accent-ink:#E8CB8A; --accent-2:#B8934F; --accent-soft:rgba(214,180,110,.12); --accent-line:rgba(214,180,110,.35); --on-accent:#17130B;
   --good:#57D3A2; --good-soft:rgba(87,211,162,.12);
   --spend:#EF8E73; --spend-ink:#F4A68F; --spend-soft:rgba(239,142,115,.13);
@@ -123,7 +123,7 @@ select option{background:var(--surface-2);color:var(--ink)}
 .nav.child2{padding-left:64px}
 .nav.child2::after{left:47px;top:-19px;height:36px}
 .phone-only{display:none}
-@media (max-width:820px){.phone-only{display:block}.spend-switch{margin:-6px 0 16px}}
+@media (max-width:820px){.phone-only{display:block}.substrip{margin:-6px -16px 0;padding:0 8px}}
 .nav .badge{margin-left:auto;min-width:22px;height:20px;padding:0 7px;display:inline-grid;place-items:center;border-radius:99px;font-size:11px;font-weight:700;color:var(--on-accent);background:var(--accent)}
 .nav .badge.dot{min-width:0;width:7px;height:7px;padding:0;box-shadow:0 0 0 3px var(--accent-soft)}
 .side-foot{margin-top:auto;display:grid;gap:4px}
@@ -160,6 +160,8 @@ select option{background:var(--surface-2);color:var(--ink)}
 .ph{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 20px;padding-top:2px}
 .ph-t{display:grid;gap:8px;min-width:0}
 .ph-eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.ph-eyebrow>.linkbtn:first-child,.ph-eyebrow>.crumbs>.linkbtn:first-child{display:inline-flex;align-items:center;gap:7px;padding:8px 0;margin:-8px 0}
+.ph-eyebrow>.linkbtn:first-child::before,.ph-eyebrow>.crumbs>.linkbtn:first-child::before{content:"";width:6px;height:6px;border-left:1.7px solid currentColor;border-bottom:1.7px solid currentColor;transform:rotate(45deg);margin-left:2px}
 .ph h1{font-weight:700;font-size:32px;line-height:1.1;letter-spacing:-.03em;color:var(--ink);overflow-wrap:anywhere}
 .ph-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .crumbs{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
@@ -197,8 +199,8 @@ a.btn{color:var(--ink)}
 .linkbtn.plain{color:inherit;font-weight:inherit;letter-spacing:inherit;text-transform:inherit}
 .linkbtn.plain:hover{color:var(--ink)}
 
-.input,select.input{width:100%;height:40px;padding:0 12px;border:1px solid var(--line-2);border-radius:10px;background:var(--sunk);color:var(--ink);transition:border-color .2s,box-shadow .2s}
-.input:focus{outline:none;border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+.input,select.input{width:100%;height:40px;padding:0 12px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:var(--sunk);color:var(--ink);transition:border-color .2s,box-shadow .2s}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 /* While amounts are hidden, a sum in a field is a blur until the field is clicked. */
 :root[data-hidden] .money-in:not(:focus){color:transparent;text-shadow:0 0 .42em var(--ink-2)}
 select.pill{height:32px;padding:0 10px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface-2);font-weight:600;font-size:13px}
@@ -231,6 +233,9 @@ select.pill{height:32px;padding:0 10px;border:1px solid var(--line-2);border-rad
 .tabs button{padding:10px 14px 13px;border:0;border-radius:8px 8px 0 0;background:none;white-space:nowrap;font-weight:550;font-size:14px;color:var(--muted)}
 .tabs button:hover{color:var(--ink)}
 .tabs button.on{color:var(--ink);font-weight:650}
+.tabs.more-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent)}
+.tabs.more-l{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px);mask-image:linear-gradient(90deg,transparent,#000 48px)}
+.tabs.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent)}
 .tabs-bar{position:absolute;left:0;bottom:0;height:2px;width:var(--iw);transform:translateX(var(--ix));border-radius:2px;background:var(--accent);box-shadow:0 0 12px rgba(214,180,110,.65)}
 .tabpanel{display:flex;flex-direction:column;gap:20px;min-width:0}
 
@@ -401,6 +406,7 @@ button.barrow:hover .go{color:var(--ink)}
 .modal>.card-h{flex-wrap:nowrap;align-items:flex-start}
 .modal>.card-h h3{flex:1;min-width:0;font-weight:680;font-size:21px;line-height:1.2;letter-spacing:-.02em}
 .modal .actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;padding-top:4px}
+.modal .actions .act-switch{flex:1 0 100%;margin:0 0 6px;padding:0 0 10px;border-bottom:1px solid var(--line)}
 /* in a long window the title and the buttons stay in view while the middle scrolls */
 /* Sticky offsets count from inside the padding, so they are pulled back by it; otherwise the header sits on top of the first row. */
 .modal>.card-h{position:sticky;top:calc(-1 * var(--mpy));z-index:3;margin:calc(-1 * var(--mpy)) calc(-1 * var(--mpx)) 0;padding:var(--mpy) var(--mpx) 4px;background:var(--surface)}
@@ -536,7 +542,7 @@ button.barrow:hover .go{color:var(--ink)}
 .txl-day{position:sticky;top:var(--topbar-h);z-index:3;display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 -2px;padding:14px 10px 7px;
   background:linear-gradient(var(--surface) 75%,rgba(18,20,24,0));font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .txl-group:first-child .txl-day{padding-top:4px}
-.txl-day>span:last-child{letter-spacing:0;font-size:12.5px;color:var(--ink-2)}
+.txl-day>span+span{letter-spacing:0;font-size:12.5px;color:var(--ink-2)}
 .txl-day>span.pos{color:var(--good)}
 .txl-row{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr) minmax(120px,max-content) minmax(80px,150px) 116px;align-items:center;gap:14px;
   padding:9px 10px;border-radius:12px;transition:background .18s}
@@ -997,6 +1003,7 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .chart .lbl{fill:var(--ink);font-weight:600;font-size:13px}
 .chart .lbl.strong{font-weight:700}
 .chart .cell{font-size:11.5px;font-weight:600}
+.chart .cell-m{font-size:9.5px;font-weight:600;opacity:.85;letter-spacing:.02em}
 .chart.sankey text{font-size:13px}
 .chart.sankey .lbl{font-size:14px}
 .chart.sm text,.chart.sm .lbl{font-size:15px}
@@ -1410,6 +1417,8 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .wz-main .sub{max-width:60ch;font-size:15px;color:var(--muted)}
 .wz-body{display:flex;flex-direction:column;gap:16px}
 .wz-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto;padding-top:18px;border-top:1px solid var(--line)}
+.wz-foot>.hstack{flex-wrap:wrap;justify-content:flex-end;min-width:0}
+.wz-foot .btn{white-space:normal;text-align:center}
 .stepdots{display:none}
 .banklist{display:grid;gap:8px}
 .bank{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--accent-line);border-radius:13px;background:var(--accent-soft)}
@@ -1751,6 +1760,9 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
   .txl-acct{display:none}
 }
 @media (max-width:820px){
+  /* A switch never runs off the screen: its options share the width and break onto two lines if they must. */
+  .seg{display:flex;width:fit-content}
+  .seg button{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.25;padding-inline:9px}
   :root{--topbar-h:56px}
   .app{grid-template-columns:minmax(0,1fr)}
   .side{display:none}
@@ -1758,7 +1770,7 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
     background:rgba(10,11,13,.96);border-bottom:1px solid var(--line)}
   .topbar .brand{flex:1;font-size:18px}
   .topbar .brand svg{width:26px;height:26px}
-  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
     background:var(--bg-2);border-top:1px solid var(--line)}
   .tabbar button{display:grid;justify-items:center;gap:3px;padding:3px 0;border:0;background:transparent;color:var(--muted);font-size:10.5px;font-weight:550}
   .tb-ic{position:relative;width:46px;height:28px;display:grid;place-items:center;border-radius:99px;transition:background .25s,color .25s}
@@ -2102,3 +2114,14 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .lup-row{max-width:100%;box-sizing:border-box}
 .modal:has(.lup){transition:max-width .35s var(--ease-out)}
 .lup-zoom input:focus-visible{outline:2px solid var(--accent-line);outline-offset:3px;border-radius:99px}
+
+/* Settings on a phone: the sections as a list, each with what it holds. */
+.card.setlist{display:flex;flex-direction:column;gap:0;padding:4px 0}
+.setlist-row{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:12px 16px;background:none;border:0;border-top:1px solid var(--line);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.setlist-row:first-child{border-top:0}
+.setlist-row>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.setlist-row b{font-weight:600;font-size:15.5px}
+.setlist-row small{color:var(--muted);font-size:13px;line-height:1.35}
+.setlist-row svg{color:var(--faint);flex:none}
+.setlist-row:active{background:rgba(255,255,255,.04)}
+.setlist-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:10px}
