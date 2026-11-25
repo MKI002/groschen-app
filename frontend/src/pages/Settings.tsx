@@ -5,6 +5,7 @@ import { confirmBankLogin, openDialog } from "../components/Dialogs";
 import { Backups } from "../components/Backups";
 import { SecuritySettings } from "../components/Security";
 import { Icon } from "../components/Icons";
+import { useNarrow } from "../components/Charts";
 import { EGGS, eggHint, eggName, eggsOn, resetFound, setEggsOn, useFoundEggs } from "../components/Eggs";
 import { motionPref, setMotionPref, type MotionPref } from "../components/Motion";
 import { useCsvImport } from "../components/CsvImport";
@@ -15,7 +16,7 @@ import { api } from "../lib/api";
 import { useApp } from "../lib/app";
 import { colorVar, currencySign, dateShort, eur, eurPublic, homePublic, num, relTime, whenNext, withSign } from "../lib/format";
 import { applyRegion, COUNTRIES, countryList, CURRENCIES, currencyName, fintsCountry, germanTax } from "../lib/regions";
-import { redirect } from "../lib/router";
+import { navigate, redirect } from "../lib/router";
 import { PageHeader } from "./Shell";
 import type { BankAccount, Category, Connection, Learned, Payday, Paydays, Rule, SettingsInfo, SettingsValues } from "../lib/types";
 
@@ -821,11 +822,18 @@ export default function Settings() {
   const { data, error, reload, setData } = useApi<SettingsInfo>("/settings");
   const [modal, setModal] = useState<null | "cats" | "password" | "log">(null);
   const [tab, setTab] = useState<Tab>(() => tabFromHash(location.hash));
+  // On a phone, Settings without a section opens as a list of the sections; a section gets a way back to it.
+  const phone = useNarrow("(max-width: 820px)");
+  const [hasHash, setHasHash] = useState(() => location.hash.length > 1);
+  const menu = phone && !hasHash;
   const [motion, setMotion] = useState<MotionPref>(motionPref);
   const [rerunning, setRerunning] = useState(false);
 
   useEffect(() => {
-    const on = () => setTab(tabFromHash(location.hash));
+    const on = () => {
+      setTab(tabFromHash(location.hash));
+      setHasHash(location.hash.length > 1);
+    };
     window.addEventListener("hashchange", on);
     window.addEventListener("groschen:navigate", on);
     return () => {
@@ -835,10 +843,24 @@ export default function Settings() {
   }, []);
   // An old address such as #groups is rewritten to its new tab so the link in the bar is the one to share.
   useEffect(() => {
+    if (menu) return;
     if (location.hash.slice(1) !== tab) redirect(`/settings#${tab}`);
-  }, [tab]);
+  }, [tab, menu]);
 
-  const header = <PageHeader title={t("nav.settings")} />;
+  const tabLabel = TABS.find(([k]) => k === tab)![1];
+  const header =
+    phone && !menu ? (
+      <PageHeader
+        title={t(tabLabel)}
+        eyebrow={
+          <button className="linkbtn plain" onClick={() => navigate("/settings")}>
+            {t("nav.settings")}
+          </button>
+        }
+      />
+    ) : (
+      <PageHeader title={t("nav.settings")} />
+    );
   if (!data) return <>{header}{error ? <ErrorNote error={error} /> : <Loading />}</>;
   const v = data.values;
 
@@ -1145,10 +1167,30 @@ export default function Settings() {
   return (
     <>
       {header}
-      <Tabs<Tab> label={t("nav.settings")} ids="set" value={tab} onChange={setTab} options={TABS.map(([k, label]) => [k, t(label)])} />
-      <div className="stack tabpanel setpanel" role="tabpanel" id={`set-panel-${tab}`} aria-labelledby={`set-tab-${tab}`} key={tab}>
-        {panels[tab]}
-      </div>
+      {menu ? (
+        <nav className="card setlist" aria-label={t("nav.settings")}>
+          {TABS.map(([k, label]) => (
+            <button key={k} type="button" className="setlist-row" onClick={() => navigate(`/settings#${k}`)}>
+              <span>
+                <b>{t(label)}</b>
+                <small>{t(`set.sum.${k}` as Key)}</small>
+              </span>
+              <Icon name="chevRight" size={16} />
+            </button>
+          ))}
+        </nav>
+      ) : phone ? (
+        <div className="stack setpanel" key={tab}>
+          {panels[tab]}
+        </div>
+      ) : (
+        <>
+          <Tabs<Tab> label={t("nav.settings")} ids="set" value={tab} onChange={setTab} options={TABS.map(([k, label]) => [k, t(label)])} />
+          <div className="stack tabpanel setpanel" role="tabpanel" id={`set-panel-${tab}`} aria-labelledby={`set-tab-${tab}`} key={tab}>
+            {panels[tab]}
+          </div>
+        </>
+      )}
 
       {modal === "cats" && (
         <CategoryEditor

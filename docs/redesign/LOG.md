@@ -278,3 +278,17 @@ Plan: round 7 says what each number counts (#1), round 8 Settings on a phone (#2
 **Blind judge** (8 pairs, [`reviews/round-7/judge.md`](reviews/round-7/judge.md)), mapped through the key: the average label won on desktop and phone; the pay-ins legend won. The share base lost on both sizes ("repeats what the card already says"); the month in the calendar title lost on both (the stepper beside it already names the month, and on the phone the title wrapped); "Swing" lost to "Ups and downs", which matches the card's own explanation.
 
 **Kept** the average label and the legend. **Reverted** the share base, the calendar month and "Swing". The two swing figures (15 % assumed for the forecast, ±17 % measured) stay apart; better wording for the forecast's one is left open.
+
+## Round 8: Settings on a phone
+
+**Theme.** Pass-6 backlog #2: on a phone, Settings opened on "Bank & import" under a sideways strip of 8 tabs, about 2.5 of them visible.
+
+**Built** (phone only, below 820 px; desktop keeps its tabs):
+- `/settings` opens on a list of the 8 sections, each with one line on what it holds ("Passkeys, login and phones with fingerprint").
+- A section (`/settings#security`) has its own title and "‹ Settings" in the eyebrow, like the drill-down pages; no tab strip.
+- Every old address still works: `#bank` … `#account` and the old hashes (`#groups`, `#salary`, …) open their section directly, as before.
+- Screenshot script: new shot `28-settings-list` (`/settings`, no section).
+
+**Blind judge** (6 pairs, [`reviews/round-8/judge.md`](reviews/round-8/judge.md)): the list won all 5 phone pairs ("a short map of every section, titled section pages and a predictable way back"); the desktop control pair was identical. Costs it named: "Sync now" is one tap further away, moving to a neighbouring section takes two taps, and the phone no longer mirrors the desktop tabs.
+
+**Kept.**

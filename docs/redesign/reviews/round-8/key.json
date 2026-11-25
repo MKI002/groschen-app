@@ -1,0 +1,26 @@
+{
+ "pair01": {
+  "file": "landing-phone.de.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "landing-phone.en.png",
+  "after": "A"
+ },
+ "pair03": {
+  "file": "26-settings-security.phone.de.png",
+  "after": "A"
+ },
+ "pair04": {
+  "file": "24-settings-backup.phone.en.png",
+  "after": "B"
+ },
+ "pair05": {
+  "file": "21-settings-categories.phone.de.png",
+  "after": "B"
+ },
+ "pair06": {
+  "file": "20-settings-bank.desk.en.png",
+  "after": "B"
+ }
+}
