@@ -9,7 +9,6 @@ import { periodQuery, useApp } from "../lib/app";
 import { colorVar, eur, int, pct } from "../lib/format";
 import { drillPath, navigate, redirect, useSearch } from "../lib/router";
 import type { Cashflow } from "../lib/types";
-import { SpendSwitch } from "./Recurring";
 import { PageHeader } from "./Shell";
 
 type Daily = { year: number; first: string | null; last: string | null; days: { date: string; amount: number; count: number }[] };
@@ -133,7 +132,6 @@ export default function Spending() {
   const header = (
     <>
       <PageHeader title={t("nav.spending")} period actions={flowSeg} />
-      <SpendSwitch />
     </>
   );
   const sun = useMemo<SunGroup[]>(() => {

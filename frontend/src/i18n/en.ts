@@ -176,6 +176,7 @@ export const en = {
   "nav.logout": "Log out",
   "hide.hide": "Hide amounts",
   "hide.show": "Show amounts",
+  "nav.section": "Sections",
   "nav.main": "Main",
   "shell.usingCsv": "Using imported CSV files.",
   "shell.approve": "Approve in your banking app",

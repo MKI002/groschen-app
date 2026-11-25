@@ -158,39 +158,56 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 }
 
 // Tabs with a bar that slides to the chosen one. `ids` links each tab to its panel for screen readers.
-export function Tabs<T extends string>({ value, options, onChange, label, ids }: {
-  value: T; options: [T, ReactNode][]; onChange: (v: T) => void; label: string; ids?: string;
+// nav: the tabs lead to other pages (a section strip), so they are links in a nav, not a tablist.
+export function Tabs<T extends string>({ value, options, onChange, label, ids, nav = false }: {
+  value: T; options: [T, ReactNode][]; onChange: (v: T) => void; label: string; ids?: string; nav?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const lang = useLang();
   const [bar, setBar] = useState<{ x: number; w: number } | null>(null);
+  // A fade on the side where more tabs are hidden, so a sideways-scrolling strip says that it scrolls.
+  const [more, setMore] = useState({ left: false, right: false });
+  const edges = () => {
+    const box = ref.current;
+    if (!box) return;
+    const left = box.scrollLeft > 2, right = box.scrollLeft + box.clientWidth < box.scrollWidth - 2;
+    setMore((m) => (m.left === left && m.right === right ? m : { left, right }));
+  };
   useLayoutEffect(() => {
     const box = ref.current;
     const el = box?.querySelector<HTMLElement>("button.on");
     if (!box || !el) return;
-    const measure = () => setBar({ x: el.offsetLeft, w: el.offsetWidth });
+    const measure = () => {
+      setBar({ x: el.offsetLeft, w: el.offsetWidth });
+      edges();
+    };
     measure();
     // On a phone the tabs scroll sideways; keep the chosen one in view.
-    if (box.scrollWidth > box.clientWidth) box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2, behavior: "smooth" });
+    if (box.scrollWidth > box.clientWidth) box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2 });
+    edges();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
+    ro.observe(box);
     return () => ro.disconnect();
   }, [value, lang, options.length]);
+  const Wrap = nav ? "nav" : "div";
   return (
-    <div
-      className="tabs"
-      role="tablist"
+    <Wrap
+      className={`tabs${more.left ? " more-l" : ""}${more.right ? " more-r" : ""}`}
+      role={nav ? undefined : "tablist"}
       aria-label={label}
-      ref={ref}
+      ref={ref as never}
+      onScroll={edges}
       style={bar ? { ["--ix" as string]: `${bar.x}px`, ["--iw" as string]: `${bar.w}px` } : undefined}
     >
       {options.map(([k, text]) => (
         <button
           key={k}
           type="button"
-          role="tab"
+          role={nav ? undefined : "tab"}
           id={ids ? `${ids}-tab-${k}` : undefined}
-          aria-selected={value === k}
+          aria-selected={nav ? undefined : value === k}
+          aria-current={nav && value === k ? "page" : undefined}
           aria-controls={ids ? `${ids}-panel-${k}` : undefined}
           className={value === k ? "on" : ""}
           onClick={() => onChange(k)}
@@ -199,7 +216,7 @@ export function Tabs<T extends string>({ value, options, onChange, label, ids }:
         </button>
       ))}
       {bar && <span className="tabs-bar" aria-hidden="true" />}
-    </div>
+    </Wrap>
   );
 }
 

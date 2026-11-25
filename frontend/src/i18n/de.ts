@@ -178,6 +178,7 @@ export const de: Record<Key, string> = {
   "nav.logout": "Abmelden",
   "hide.hide": "Beträge verbergen",
   "hide.show": "Beträge zeigen",
+  "nav.section": "Bereiche",
   "nav.main": "Hauptmenü",
   "shell.usingCsv": "Nutzt importierte CSV-Dateien.",
   "shell.approve": "In der Banking-App bestätigen",

@@ -95,3 +95,24 @@ Score = reviewers raising it × severity (blocks 3, slows 2, cosmetic 1) × use 
 | 15 | Period menu: "last month" needs Month then ‹ | daily (1) | 3 | 2 | 1 | 6 |
 
 Plan: structure first (1, with 10), then the cheap cross-cutting wins (2, 3, 4, 5, 6), then the daily screens (9, 8, 11, 12), then the rest as rounds allow.
+
+## Round 1: phone navigation and the way back
+
+**Theme.** Backlog #1 (phone can't reach Fixed costs and Depot directly; two stacked switches both start with "Ausgaben") and #10 (drill pages have no visible way back).
+
+**Explored.** Three options, judged by two fresh reviewers (daily phone user; information architect / newcomer) from a description plus the current phone screenshots:
+- A: five tabs (Overview, Transactions, Spending, Fixed costs, Net worth), depot sub-pages in a strip.
+- B: four tabs plus one section strip under the top bar that mirrors the sidebar's sub-items wherever a place has them.
+- C: five tabs with Depot as a tab, Fixed costs in a strip.
+
+Both picked **B** (one pattern for sub-pages, matches the sidebar, leaves room in the bar and in German labels). Both asked that the strip show its level so "Analyse" next to "Vermögen" can't be read as analysing all money: built as two levels ("Vermögen · Depot" on Net worth, "Depot · Prognose · Analyse · Einzahlungen" on the depot pages), with a fade where a strip scrolls.
+
+**Built.**
+- `SectionStrip` in `Shell.tsx` (phone only), driven by a small table next to `MAIN_NAV`; it replaces the "Ausgaben | Fixkosten" switch (`SpendSwitch`, removed) and the depot's phone-only tab strip. Segmented switches now only filter or change a view.
+- `Tabs` gained a `nav` mode (a `<nav>` with `aria-current` instead of a tablist) and edge fades whenever a strip scrolls (also helps Settings).
+- The parent page in a page's eyebrow gets a back chevron and a larger hit area (drill pages, depot pages, ETF page).
+- The phone tab bar spreads its four tabs over the full width instead of leaving a fifth slot empty.
+
+**Blind judge** (10 pairs; [`reviews/round-1/judge.md`](reviews/round-1/judge.md), key in `key.json`): the new version won 9 of 10 pairs (Spending, Fixed costs, Net worth, Depot, Analysis, drill-down phone and desktop, Investments EN, Orbit). The ETF page was a tie leaning to the old version: the depot strip stacked on top of the ETF page's own tabs gave two tab rows that both contain "Analyse" and "Prognose".
+
+**Kept**, with one fix from the verdict: no section strip on an ETF page (it has its own tabs and the back link to the depot). Rechecked on `19-etf.phone.de`: one tab row again.

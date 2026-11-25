@@ -3,7 +3,7 @@ import { TanPrompt } from "../components/BankForm";
 import { confirmBankLogin, DialogHost, openDialog } from "../components/Dialogs";
 import { Icon, Logo } from "../components/Icons";
 import { usePointerEffects } from "../components/Motion";
-import { Dropdown, Spinner, useToast } from "../components/UI";
+import { Dropdown, Spinner, Tabs, useToast } from "../components/UI";
 import { getRegion, locale, t, useT, type Key } from "../i18n";
 import { fintsCountry } from "../lib/regions";
 import { useApp, type Period } from "../lib/app";
@@ -268,6 +268,31 @@ function Page({ path }: { path: string }) {
   }
 }
 
+// On a phone the bottom bar holds the top places only. Where a place has sub-pages, one strip
+// under the top bar lists them, the same entries as the sidebar, so sub-pages work alike everywhere.
+const STRIPS: { on: (path: string) => boolean; items: [string, Key][] }[] = [
+  { on: (p) => p === "/spending" || p.startsWith("/spending/") || p.startsWith("/groups/") || p === "/recurring", items: [["/spending", "nav.spending"], ["/recurring", "nav.recurring"]] },
+  { on: (p) => p === "/networth", items: [["/networth", "nav.networth"], ["/investments", "nav.investments"]] },
+  {
+    // An ETF page has its own tabs and a way back to the depot; a second strip would only compete.
+    on: (p) => p.startsWith("/investments") && !p.startsWith("/investments/etf/"),
+    items: [["/investments", "nav.investments"], ["/investments/forecast", "inv.tab.forecast"], ["/investments/analysis", "inv.tab.analysis"], ["/investments/payments", "inv.tab.payments"]],
+  },
+];
+
+function SectionStrip({ path }: { path: string }) {
+  const t = useT();
+  const strip = STRIPS.find((s) => s.on(path));
+  if (!strip) return null;
+  // A drill-down counts as the place it belongs to.
+  const value = [...strip.items].reverse().find(([to]) => navOn(path, to) || (to === "/spending" && path.startsWith("/spending/")))?.[0] ?? strip.items[0][0];
+  return (
+    <div className="phone-only substrip">
+      <Tabs<string> nav label={t("nav.section")} value={value} onChange={(to) => navigate(to)} options={strip.items.map(([to, label]) => [to, t(label)])} />
+    </div>
+  );
+}
+
 // The 90-day login reminder, on every page but Settings once it is due.
 function LoginBanner() {
   const { connections, badges, refresh } = useApp();
@@ -340,6 +365,7 @@ export default function Shell() {
       </div>
       <main className="main">
         <LoginBanner />
+        <SectionStrip path={path} />
         <div className="page" key={path}>
           <Page path={path} />
         </div>
