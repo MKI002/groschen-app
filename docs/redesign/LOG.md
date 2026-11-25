@@ -292,3 +292,11 @@ Plan: round 7 says what each number counts (#1), round 8 Settings on a phone (#2
 **Blind judge** (6 pairs, [`reviews/round-8/judge.md`](reviews/round-8/judge.md)): the list won all 5 phone pairs ("a short map of every section, titled section pages and a predictable way back"); the desktop control pair was identical. Costs it named: "Sync now" is one tap further away, moving to a neighbouring section takes two taps, and the phone no longer mirrors the desktop tabs.
 
 **Kept.**
+
+## CodeQL after round 8
+
+CodeQL flagged "DOM text reinterpreted as HTML" (high) in `pages/Settings.tsx`, the file round 8 touched. The flagged line was the CSV export link, which built its address from the current language; the language can only be `de` or `en`, but the link is now one of two fixed addresses. The same commit range also makes the hash parser return only names from its own table (an `Object.hasOwn` check, so `#constructor` can't reach a redirect). No visual change.
+
+## Final pass (six fresh reviewers, all 144 screenshots)
+
+Reviews: [`reviews/final/`](reviews/final/); screenshots: [`final/`](final/). Scores and the end state are in [REPORT.md](REPORT.md). The loop stops here: 8 rounds ran, and what the final pass ranks highest is either needs Markus, needs backend, or was tried and rejected.
