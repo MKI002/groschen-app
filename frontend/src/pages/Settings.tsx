@@ -811,7 +811,10 @@ const TABS: [Tab, Key][] = [
 const OLD_HASH: Record<string, Tab> = { groups: "categories", salary: "hints", investments: "depot", network: "privacy", look: "account" };
 const tabFromHash = (hash: string): Tab => {
   const h = hash.replace(/^#/, "");
-  return TABS.some(([k]) => k === h) ? (h as Tab) : OLD_HASH[h] ?? "bank";
+  // Only known names come back (never the raw hash), so nothing from the address reaches a redirect.
+  const known = TABS.find(([k]) => k === h);
+  if (known) return known[0];
+  return Object.hasOwn(OLD_HASH, h) ? OLD_HASH[h] : "bank";
 };
 
 export default function Settings() {
