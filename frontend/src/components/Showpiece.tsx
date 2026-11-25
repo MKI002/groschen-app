@@ -1,4 +1,4 @@
-// The animated centrepieces: money flowing through the Sankey, the payday tank and the
+// The animated centrepieces: money flowing through the Sankey and the
 // orbit of recurring payments. All drawn on canvas with useCanvasLoop, so they pause off
 // screen and in background tabs, do less on slow devices and hold still with reduced motion.
 
@@ -333,93 +333,6 @@ export function FlowParticles({ bands, W, hot }: { bands: Band[]; W: number; hot
     [parts, colors, pairOf, W, tier, font],
   );
   return <canvas ref={ref} className="overlay-canvas" aria-hidden="true" />;
-}
-
-// --- the payday tank --------------------------------------------------------------------------
-
-// What's left until payday as a level gauge: it fills up when the page opens, the surface
-// moves gently, and it turns amber and then red as it runs low. Flat colours, no glass effects.
-export function LiquidTank({ level, label }: { level: number; label: string }) {
-  const lv = Math.max(0, Math.min(1, level));
-  const tone = lv > 0.35 ? "good" : lv > 0.12 ? "warn" : "bad";
-  const born = useRef(0);
-  const colors = useMemo(() => ({ liquid: resolveColor(`var(--${tone})`), line: resolveColor("var(--line-2)"), ink: resolveColor("var(--muted)") }), [tone]);
-  const bubbles = useMemo(() => {
-    const rand = seeded(42);
-    return Array.from({ length: 9 }, () => ({ x: 0.12 + rand() * 0.76, v: 0.012 + rand() * 0.02, o: rand(), r: 1 + rand() * 2.2 }));
-  }, []);
-  const ref = useCanvasLoop(
-    ({ ctx, w, h, t: now, still }) => {
-      if (!born.current) born.current = now;
-      const p = still ? 1 : Math.min(1, (now - born.current) / 1500);
-      const fill = lv * (1 - Math.pow(1 - p, 3));
-      const x = 8, y = 6, tw = w - 16, th = h - 12, r = Math.min(22, tw / 3);
-      const surface = y + th - fill * th;
-      const amp = still ? 0 : 3.2 * (0.35 + 0.65 * (1 - p * 0.5));
-      ctx.save();
-      roundRect(ctx, x, y, tw, th, r);
-      ctx.clip();
-      // the surface as a line (open) or as the body of liquid under it (closed)
-      const wave = (phase: number, a: number, speed: number, body = true) => {
-        ctx.beginPath();
-        if (body) ctx.moveTo(x, y + th);
-        for (let px = 0; px <= tw; px += 4) {
-          const yy = surface + Math.sin(px * 0.05 + now * speed + phase) * a + Math.sin(px * 0.021 - now * speed * 0.6) * a * 0.6;
-          if (!body && px === 0) ctx.moveTo(x + px, yy);
-          else ctx.lineTo(x + px, yy);
-        }
-        if (body) {
-          ctx.lineTo(x + tw, y + th);
-          ctx.closePath();
-        }
-      };
-      wave(1.7, amp, 0.0017);
-      ctx.fillStyle = rgba(colors.liquid, 0.2);
-      ctx.fill();
-      wave(0, amp * 0.8, 0.0024);
-      const g = ctx.createLinearGradient(0, surface, 0, y + th);
-      g.addColorStop(0, rgba(colors.liquid, 0.5));
-      g.addColorStop(1, rgba(colors.liquid, 0.12));
-      ctx.fillStyle = g;
-      ctx.fill();
-      // a bright rim where the liquid meets the air
-      if (fill > 0.01) {
-        wave(0, amp * 0.8, 0.0024, false);
-        ctx.strokeStyle = rgba(colors.liquid, 0.95);
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-      // bubbles rising through the liquid
-      if (!still && fill > 0.04) {
-        for (const b of bubbles) {
-          const k = (b.o + now * b.v * 0.001) % 1;
-          const by = y + th - k * (y + th - surface);
-          ctx.beginPath();
-          ctx.arc(x + b.x * tw + Math.sin(now * 0.002 + b.o * 9) * 2, by, b.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255,255,255,${(0.35 * (1 - k)).toFixed(3)})`;
-          ctx.fill();
-        }
-      }
-      ctx.restore();
-      // scale marks
-      ctx.strokeStyle = rgba(colors.ink, 0.35);
-      ctx.lineWidth = 1;
-      for (const m of [0.25, 0.5, 0.75]) {
-        const my = y + th - m * th;
-        ctx.beginPath();
-        ctx.moveTo(x + tw - 10, my);
-        ctx.lineTo(x + tw - 3, my);
-        ctx.stroke();
-      }
-      roundRect(ctx, x, y, tw, th, r);
-      ctx.strokeStyle = rgba(colors.line, 1);
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      return true;
-    },
-    [lv, colors],
-  );
-  return <canvas ref={ref} className="tank" role="img" aria-label={label} />;
 }
 
 // --- the orbit of recurring payments ---------------------------------------------------------------

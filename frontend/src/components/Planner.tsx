@@ -7,7 +7,6 @@ import { navigate } from "../lib/router";
 import type { Alert, Available, Insight, PlannedCharge, SettingsValues, SubEvent } from "../lib/types";
 import { Icon } from "./Icons";
 import { Odometer } from "./Motion";
-import { LiquidTank } from "./Showpiece";
 import { Card, IconBadge, Modal, useApi, useSyncEvents, useToast, type Tone } from "./UI";
 
 const weekday = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
@@ -28,7 +27,6 @@ export function PaydayHero() {
   if (!data.has_account) return null;
   const d = data;
   const short = d.available < 0;
-  const level = d.balance > 0 ? Math.max(0, d.available) / d.balance : 0;
   return (
     <section className="card hero">
       <div className="hero-body">
@@ -42,7 +40,6 @@ export function PaydayHero() {
         <Runway d={d} onOpen={() => setOpen(true)} />
         {d.balance_age_days > 7 && <p className="hero-note">{t("avail.stale", { n: d.balance_age_days })}</p>}
       </div>
-      <LiquidTank level={level} label={t("avail.tankLabel", { p: Math.round(level * 100) })} />
       {open && <PaydayDetails d={d} onClose={() => setOpen(false)} />}
     </section>
   );
