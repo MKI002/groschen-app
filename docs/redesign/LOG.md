@@ -134,3 +134,17 @@ Both picked **B** (one pattern for sub-pages, matches the sidebar, leaves room i
 **Kept.**
 
 **Not changed, noted:** the Overview inbox says "Groschen sorted 39 transactions on its own. Do the categories look right?" while the queue can also hold transactions without any guess ("These transactions need a category from you"). Telling them apart needs a count of guesses vs. blanks the badge endpoint doesn't return: see "needs backend".
+
+## Round 3: readable grey, nothing cut off on a phone
+
+**Theme.** Backlog #2 (secondary text below AA) and #6 (phone: switches and the wizard footer cut off; heatmap and monthly returns open on January).
+
+**Built.**
+- `--faint` from #5E636C to #7E838C: 4.8:1 on the card surface instead of 3.0:1 (account column, percentages, dates, captions, placeholders). `--muted` unchanged, so the two greys still differ.
+- Phone: a segmented switch shares the screen width and lets an option break onto two lines instead of running off the card ("15 Tage vorher", "Buchungsmonat", "Einnahmen").
+- Wizard footer: the long "Überspringen, vorerst CSV-Dateien nutzen" wraps inside the card, "Weiter" stays right.
+- Tried: sideways-scrolling time charts (year heatmap, monthly returns, drawdown, pay-in bars) open on the latest end, with a fade on the left.
+
+**Blind judge** (11 pairs, [`reviews/round-3/judge.md`](reviews/round-3/judge.md)): the new version won 9 (both Settings switches, wizard, Transactions phone and desktop, Overview, Fixed costs, Investments, ETF phone), mostly for the brighter grey and nothing clipped. It lost Investments › Analysis on the phone narrowly and tied on Spending: opening at the latest end hid the outlined best and worst months that the legend refers to, and scrolled the heatmap's weekday labels out of view.
+
+**Kept** the grey and the phone fixes. **Reverted** the open-on-the-latest-end scrolling (the losses came only from it). Better fix for later: lay the monthly returns out in rows of six on a phone instead of a sideways scroll (see backlog).
