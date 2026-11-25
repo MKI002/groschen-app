@@ -100,22 +100,30 @@ export default function Calendar() {
   for (const e of data.entries) byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]);
   const days = [...byDay.keys()].sort();
   const shown = picked ? days.filter((d) => d === picked) : days;
-  const paidShare = data.total > 0 ? Math.min(1, data.paid / data.total) : 0;
+  // Standing orders to savings and the depot come round like fixed costs, but they aren't costs:
+  // the title names them apart, so it matches the fixed costs on the list.
+  const saving = data.entries.filter((e) => e.kind === "transfer").reduce((s, e) => s + e.amount, 0);
+  const fixedOnes = data.entries.filter((e) => e.kind === "fixed");
+  const fixed = fixedOnes.reduce((s, e) => s + e.amount, 0);
+  // With savings named apart, paid and still to come count the fixed costs only, so the line adds up to the title.
+  const paid = saving > 0 ? fixedOnes.filter((e) => e.status === "paid").reduce((s, e) => s + e.amount, 0) : data.paid;
+  const expected = saving > 0 ? fixed - paid : data.expected;
+  const paidShare = paid + expected > 0 ? Math.min(1, paid / (paid + expected)) : 0;
 
   return (
     <div className="cal-split">
       <Card
         className="calcard"
-        title={t("cal.total", { amount: eur(data.total) })}
+        title={saving > 0 ? t("cal.totalSplit", { fixed: eur(fixed), saving: eur(saving) }) : t("cal.total", { amount: eur(data.total) })}
         sub={
           <span className="calbar-legend">
             <span>
               <span className="sq" style={{ background: "var(--spend)" }} />
-              {t("cal.paidAmt", { amount: eur(data.paid) })}
+              {t("cal.paidAmt", { amount: eur(paid) })}
             </span>
             <span>
               <span className="sq dashed" />
-              {t("cal.toComeAmt", { amount: eur(data.expected) })}
+              {t("cal.toComeAmt", { amount: eur(expected) })}
             </span>
           </span>
         }

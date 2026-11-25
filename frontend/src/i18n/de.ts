@@ -956,6 +956,7 @@ export const de: Record<Key, string> = {
   "cal.prev": "Vorheriger Monat",
   "cal.next": "Nächster Monat",
   "cal.total": "{amount} Fixkosten in diesem Monat",
+  "cal.totalSplit": "{fixed} Fixkosten · {saving} gespart",
   "cal.gridLabel": "Fixkosten im {month}",
   "cal.nothing": "nichts",
   "cal.legendPaid": "Bezahlt",

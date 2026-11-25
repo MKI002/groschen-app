@@ -116,3 +116,21 @@ Both picked **B** (one pattern for sub-pages, matches the sidebar, leaves room i
 **Blind judge** (10 pairs; [`reviews/round-1/judge.md`](reviews/round-1/judge.md), key in `key.json`): the new version won 9 of 10 pairs (Spending, Fixed costs, Net worth, Depot, Analysis, drill-down phone and desktop, Investments EN, Orbit). The ETF page was a tie leaning to the old version: the depot strip stacked on top of the ETF page's own tabs gave two tab rows that both contain "Analyse" and "Prognose".
 
 **Kept**, with one fix from the verdict: no section strip on an ETF page (it has its own tabs and the back link to the depot). Rechecked on `19-etf.phone.de`: one tab row again.
+
+## Round 2: one name for one thing
+
+**Theme.** Backlog #3, #4, #5: the same thing under different names, and totals that disagree.
+
+**Built** (copy and one computed title; no new elements):
+- Fixed-costs calendar title: "1,423.48 € fixed costs · 1,100.00 € saved" instead of "2,523.48 € fixed costs this month", which counted standing orders to savings and the depot as fixed costs and contradicted the list. Paid / still to come and the bar now count the fixed costs only, so the line adds up to the title. Computed from the calendar entries' `kind`, no new data.
+- English: "Payments" (the depot's pay-ins page) is now "Pay-ins", its rows "2 pay-ins"; the row action "Not counted" (read as a status) is now "Don't count", matching German "Nicht zählen".
+- English: "transaction" everywhere instead of a mix of "booking" and "transaction" (German already says "Umsatz" throughout). Kept "booking text" and "booking month", which are bank terms.
+- Settings pointed to a filter called "To review"; it is "Needs review".
+- Depot sub-pages in the order the ETF page already uses: Analysis, Forecast, Pay-ins (Analysis is the more frequent question).
+- Screenshot script: the review queue now shows only the transactions that wait for a look (the demo can't filter; the patch does what the server does).
+
+**Blind judge** (9 pairs, [`reviews/round-2/judge.md`](reviews/round-2/judge.md)): the new version won all 9; "in no pair is the losing side better anywhere important". Two leftovers it named (calendar paid line still summing savings; pay-in rows saying "payments") were fixed before committing and rechecked on `12-recurring-calendar.desk.en` and `18-inv-payments`.
+
+**Kept.**
+
+**Not changed, noted:** the Overview inbox says "Groschen sorted 39 transactions on its own. Do the categories look right?" while the queue can also hold transactions without any guess ("These transactions need a category from you"). Telling them apart needs a count of guesses vs. blanks the badge endpoint doesn't return: see "needs backend".

@@ -32,8 +32,8 @@ export const MAIN_NAV: NavItem[] = [
   { to: "/recurring", icon: "repeat", label: "nav.recurring", child: 1 },
   { to: "/networth", icon: "vault", label: "nav.networth" },
   { to: "/investments", icon: "etf", label: "nav.investments", child: 1 },
-  { to: "/investments/forecast", icon: "trend", label: "inv.tab.forecast", child: 2 },
   { to: "/investments/analysis", icon: "spark", label: "inv.tab.analysis", child: 2 },
+  { to: "/investments/forecast", icon: "trend", label: "inv.tab.forecast", child: 2 },
   { to: "/investments/payments", icon: "coin", label: "inv.tab.payments", child: 2 },
 ];
 
@@ -276,7 +276,7 @@ const STRIPS: { on: (path: string) => boolean; items: [string, Key][] }[] = [
   {
     // An ETF page has its own tabs and a way back to the depot; a second strip would only compete.
     on: (p) => p.startsWith("/investments") && !p.startsWith("/investments/etf/"),
-    items: [["/investments", "nav.investments"], ["/investments/forecast", "inv.tab.forecast"], ["/investments/analysis", "inv.tab.analysis"], ["/investments/payments", "inv.tab.payments"]],
+    items: [["/investments", "nav.investments"], ["/investments/analysis", "inv.tab.analysis"], ["/investments/forecast", "inv.tab.forecast"], ["/investments/payments", "inv.tab.payments"]],
   },
 ];
 
