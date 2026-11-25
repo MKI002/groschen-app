@@ -148,3 +148,40 @@ Both picked **B** (one pattern for sub-pages, matches the sidebar, leaves room i
 **Blind judge** (11 pairs, [`reviews/round-3/judge.md`](reviews/round-3/judge.md)): the new version won 9 (both Settings switches, wizard, Transactions phone and desktop, Overview, Fixed costs, Investments, ETF phone), mostly for the brighter grey and nothing clipped. It lost Investments › Analysis on the phone narrowly and tied on Spending: opening at the latest end hid the outlined best and worst months that the legend refers to, and scrolled the heatmap's weekday labels out of view.
 
 **Kept** the grey and the phone fixes. **Reverted** the open-on-the-latest-end scrolling (the losses came only from it). Better fix for later: lay the monthly returns out in rows of six on a phone instead of a sideways scroll (see backlog).
+
+## Full pass after round 3 (six fresh reviewers, all 136 screenshots)
+
+Reviews: [`reviews/pass-3/`](reviews/pass-3/). Mean scores (same extraction as round 0; absolute scores drift, so these are a side-effect check, not the ratchet):
+
+| Area | Clarity | Hierarchy | Tasks | Data | Naming | Consistency | Phone | Access. | Craft | Mean |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Overview | 7.0 | 7.7 | 8.0 | 6.5 | 6.0 | 7.0 | 7.2 | 6.0 | 7.3 | 7.0 |
+| Transactions | 7.6 | 7.0 | 6.0 | 6.3 | 5.6 | 6.0 | 6.1 | – | 7.2 | 6.4 |
+| Spending | 7.0 | 6.5 | 6.2 | 6.3 | 5.6 | 5.3 | 6.0 | – | 7.0 | 6.2 |
+| Drilldowns | 6.4 | 8.0 | 5.0 | 5.0 | 5.0 | 5.5 | 6.6 | – | 7.0 | 5.9 |
+| Fixed costs | 6.6 | 7.5 | 7.0 | 5.4 | 5.7 | 6.0 | 5.4 | 4.0 | 6.5 | 6.0 |
+| Net worth | 8.0 | 7.7 | 7.0 | 6.0 | 6.0 | 6.5 | 7.5 | – | 6.5 | 7.0 |
+| Depot | 7.1 | 7.3 | 7.8 | 6.6 | 5.5 | 6.7 | 6.7 | – | 7.3 | 6.8 |
+| ETF page | 7.7 | – | 7.0 | 6.0 | 5.2 | 4.5 | 6.7 | – | 7.5 | 6.3 |
+| Settings | 7.0 | 6.7 | 7.0 | 6.5 | 6.0 | 5.0 | 6.2 | 6.0 | 7.0 | 6.3 |
+| Wizard & login | 8.5 | 7.5 | 8.0 | 7.0 | 6.5 | 7.0 | 6.3 | 5.0 | 8.0 | 7.1 |
+
+No screen got worse in any reviewer's eyes; no reviewer raised the section strip, the new names or the brighter grey as a problem. What the pass found:
+
+- **Capture artefacts again.** The "Income" category page (category 1, a parent with no direct bookings) showed 0.00 € and was every reviewer's #1 or #3. It was my choice of page, not a path a person takes; from round 4 the script captures Groceries. "Needs review 39" opening 8 rows is the demo's 200-row recording; the server returns all 39.
+- **Real, new or still open, re-ranked:**
+
+| # | Item | Raised by | Score |
+|---|---|---|---|
+| 1 | Edit dialog: the "every transaction from this merchant" switch is out of sight above Save on a phone (and on by default) | daily, first-time, phone | 18 |
+| 2 | Period menu has no "last month"; "what did I pay for X last month" takes 5–7 steps | daily | 18 (blocks, daily) |
+| 3 | "What comes off before payday": the itemised list behind the hero link was never captured, so reviewers looked for it in the calendar | daily | capture |
+| 4 | Monthly returns and year heatmap cut at June on a phone | phone, dataviz, (designer) | 8 |
+| 5 | Orbit unreadable on a phone, 4 of 13 dots labelled | designer, dataviz, phone, first-time | 8 (→ needs Markus for hiding it) |
+| 6 | Transactions: two styles of day header | designer (twice) | 6 |
+| 7 | Disabled gold buttons and input borders below 3:1; "no bank found" before typing | designer, phone, first-time | 6 |
+| 8 | "Saved" card names invested and stays, not the largest part (put aside) | first-time | 4 |
+| 9 | Sankey spends half its width on a 99.6 % single source | dataviz, designer | 4 |
+| 10 | Sunburst repeats the bar list; heatmap colour scale has no order | dataviz, designer | needs Markus / later |
+
+Plan: round 4 the daily tasks (1, 2, 3), round 5 phone charts (4), round 6 polish (6, 7, 8), then the full pass.
