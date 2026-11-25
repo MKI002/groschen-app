@@ -1082,7 +1082,7 @@ export default function Settings() {
       <>
         <Card title={t("bk.title")}>
           <Row title={t("bk.export")} sub={t("bk.export.sub")}>
-            <a className="btn sm" href={`/api/export/transactions.csv?lang=${getLang()}`} download>
+            <a className="btn sm" href={getLang() === "de" ? "/api/export/transactions.csv?lang=de" : "/api/export/transactions.csv?lang=en"} download>
               <Icon name="download" size={15} />
               {t("bk.exportBtn")}
             </a>
