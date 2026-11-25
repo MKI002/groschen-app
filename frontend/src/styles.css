@@ -199,8 +199,8 @@ a.btn{color:var(--ink)}
 .linkbtn.plain{color:inherit;font-weight:inherit;letter-spacing:inherit;text-transform:inherit}
 .linkbtn.plain:hover{color:var(--ink)}
 
-.input,select.input{width:100%;height:40px;padding:0 12px;border:1px solid var(--line-2);border-radius:10px;background:var(--sunk);color:var(--ink);transition:border-color .2s,box-shadow .2s}
-.input:focus{outline:none;border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+.input,select.input{width:100%;height:40px;padding:0 12px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:var(--sunk);color:var(--ink);transition:border-color .2s,box-shadow .2s}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 /* While amounts are hidden, a sum in a field is a blur until the field is clicked. */
 :root[data-hidden] .money-in:not(:focus){color:transparent;text-shadow:0 0 .42em var(--ink-2)}
 select.pill{height:32px;padding:0 10px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface-2);font-weight:600;font-size:13px}
@@ -542,7 +542,7 @@ button.barrow:hover .go{color:var(--ink)}
 .txl-day{position:sticky;top:var(--topbar-h);z-index:3;display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 -2px;padding:14px 10px 7px;
   background:linear-gradient(var(--surface) 75%,rgba(18,20,24,0));font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .txl-group:first-child .txl-day{padding-top:4px}
-.txl-day>span:last-child{letter-spacing:0;font-size:12.5px;color:var(--ink-2)}
+.txl-day>span+span{letter-spacing:0;font-size:12.5px;color:var(--ink-2)}
 .txl-day>span.pos{color:var(--good)}
 .txl-row{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr) minmax(120px,max-content) minmax(80px,150px) 116px;align-items:center;gap:14px;
   padding:9px 10px;border-radius:12px;transition:background .18s}

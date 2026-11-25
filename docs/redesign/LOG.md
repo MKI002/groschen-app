@@ -214,3 +214,17 @@ Plan: round 4 the daily tasks (1, 2, 3), round 5 phone charts (4), round 6 polis
 **Blind judge** (7 pairs, [`reviews/round-5/judge.md`](reviews/round-5/judge.md)): the folded version won all 4 pairs that differ; the 3 desktop/ETF control pairs were identical, as intended. One weakness named: the small month labels were hard to read on light-green tiles; they now switch to white on strong tiles like the values do (rechecked on `17-inv-analysis.phone.de`).
 
 **Kept.**
+
+## Round 6: polish
+
+**Theme.** Pass-3 backlog #6–#8, small things reviewers kept tripping over.
+
+**Built.**
+- Overview "Saved" card: when the month's savings go to more than one place, the caption names every part of the bar ("… invested · … put aside · … stays") instead of only some of them.
+- Transactions: every day header has the same style; days with one transaction used to get a brighter, larger date.
+- Bank search (Settings › Connect, wizard): "No bank found" appears only after something is typed.
+- Inputs: a slightly stronger resting border and a champagne border on focus, so the focused field is easy to see.
+
+**Blind judge** (8 pairs, [`reviews/round-6/judge.md`](reviews/round-6/judge.md)): mapped through the key, the new version won all 8 pairs. Named cost: on desktop the longer Saved caption wraps onto two lines.
+
+**Kept.**

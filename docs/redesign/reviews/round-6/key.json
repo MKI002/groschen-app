@@ -1,0 +1,34 @@
+{
+ "pair01": {
+  "file": "01-overview.desk.en.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "01-overview.phone.de.png",
+  "after": "B"
+ },
+ "pair03": {
+  "file": "02-transactions.desk.en.png",
+  "after": "A"
+ },
+ "pair04": {
+  "file": "02-transactions.phone.de.png",
+  "after": "B"
+ },
+ "pair05": {
+  "file": "30-settings-connect-dialog.desk.en.png",
+  "after": "B"
+ },
+ "pair06": {
+  "file": "41-wizard-country.phone.de.png",
+  "after": "A"
+ },
+ "pair07": {
+  "file": "42-login.phone.de.png",
+  "after": "A"
+ },
+ "pair08": {
+  "file": "42-login.desk.en.png",
+  "after": "A"
+ }
+}

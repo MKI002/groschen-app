@@ -52,7 +52,7 @@ function BankPicker({ onPick }: { onPick: (b: BankInfo) => void }) {
             </span>
           </button>
         ))}
-        {found && !found.length && <p className="muted small">{t("bank.noMatch")}</p>}
+        {found && !found.length && q.trim() && <p className="muted small">{t("bank.noMatch")}</p>}
       </div>
     </div>
   );
