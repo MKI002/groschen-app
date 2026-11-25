@@ -170,7 +170,7 @@ export function DepotChart({ days, zoom }: { days: DayPoint[]; zoom: Zoom }) {
         <svg ref={g.ref} className={`${narrow ? "chart sm" : "chart"} zchart`} viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`${t("chart.value")}. ${t("zoom.aria")}`} {...g.props}>
           <defs>
             <linearGradient id={`${id}g`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="var(--accent)" stopOpacity=".24" />
+              <stop offset="0" stopColor="var(--accent)" stopOpacity=".1" />
               <stop offset="1" stopColor="var(--accent)" stopOpacity="0" />
             </linearGradient>
             <clipPath id={`${id}c`}>

@@ -213,9 +213,9 @@ select.pill{height:32px;padding:0 10px;border:1px solid var(--line-2);border-rad
 
 .switch{position:relative;width:40px;height:23px;flex:none}
 .switch input{appearance:none;-webkit-appearance:none;width:40px;height:23px;margin:0;border-radius:23px;background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-2);cursor:pointer;transition:background .25s,box-shadow .25s}
-.switch input:checked{background:var(--accent);box-shadow:inset 0 0 0 1px transparent,0 0 14px -2px rgba(214,180,110,.6)}
+.switch input:checked{background:rgba(214,180,110,.42);box-shadow:inset 0 0 0 1px rgba(214,180,110,.5)}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:var(--ink-2);pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.5);transition:transform .3s var(--ease-spring),background .25s}
-.switch:has(input:checked)::after{transform:translateX(17px);background:var(--on-accent)}
+.switch:has(input:checked)::after{transform:translateX(17px);background:var(--ink)}
 
 .seg{position:relative;isolation:isolate;display:inline-flex;gap:2px;max-width:100%;padding:3px;overflow-x:auto;scrollbar-width:none;border:1px solid var(--line);border-radius:11px;background:var(--sunk)}
 .seg::-webkit-scrollbar{display:none}
@@ -448,7 +448,6 @@ button.barrow:hover .go{color:var(--ink)}
 .ddhero .eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--accent));box-shadow:0 0 10px var(--c,var(--accent))}
 .nwchart,.invchart,.ddchart{display:grid;gap:10px;align-content:start;min-width:0}
 .invchart-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px}
-.tank{display:block;width:118px;height:176px}
 
 /* the odometer: every digit a column of 0-9 that rolls to its place */
 .odo{display:inline-block;white-space:nowrap}
@@ -1784,7 +1783,6 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
   .card{padding:18px}
   .card.hero,.card.subhero,.card.nwhero,.card.invhero,.card.ddhero{padding:20px;gap:18px}
   .hero-v{font-size:42px}
-  .tank{width:76px;height:118px}
   .kpis{grid-template-columns:minmax(0,1fr);gap:12px}
   .tile{padding:16px 18px}
   .tile .v{font-size:26px}
@@ -1877,7 +1875,6 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
   .an-col-v{font-size:12.5px}
   .an-col>small{font-size:11.5px}
   .card.hero{grid-template-columns:minmax(0,1fr)}
-  .card.hero .tank{display:none}
   .hero-v{font-size:38px}
   .ph h1{font-size:26px}
   .rw-legend{display:grid;grid-template-columns:auto auto;justify-content:space-between;row-gap:8px}
@@ -2125,3 +2122,6 @@ button.nwacct:hover .nwacct-go{color:var(--ink)}
 .setlist-row svg{color:var(--faint);flex:none}
 .setlist-row:active{background:rgba(255,255,255,.04)}
 .setlist-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:10px}
+
+/* A primary button that can't be pressed yet looks neutral, not like a dimmed gold one. */
+.btn.primary[disabled]{opacity:1;background:var(--surface-3);border-color:var(--line-2);color:var(--muted);box-shadow:none}

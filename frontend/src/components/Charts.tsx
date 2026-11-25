@@ -374,7 +374,8 @@ export function Sunburst({ groups, zoom, onZoom, onPickGroup, onPickCategory, la
               >
                 <title>{`${g.name} ${eur(g.amount)} · ${zoom || !zoomable ? tr("chart.clickForTx") : tr("sb.clickZoom")}`}</title>
               </path>
-              {g.children.filter((c) => c.amount > 0).map((c, j) => {
+              {/* The ring of categories shows inside a group only; at the top level it was a fringe of unlabelled slivers that repeated the list. */}
+              {(zoom || !zoomable) && g.children.filter((c) => c.amount > 0).map((c, j) => {
                 const ca = cur[`c:${g.key}:${c.key}`];
                 const cd = ca && arcPath(cx, cy, 112, 146, ca, 0.012);
                 return (
@@ -517,7 +518,7 @@ export function LineChart({ data, color = "var(--accent)", label }: { data: { mo
     <svg ref={box} className={chartClass(narrow)} viewBox={`0 0 ${W} ${H}`} width="100%" style={chartStyle(narrow)} role="img" aria-label={label}>
       <defs>
         <linearGradient id="nwg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={color} stopOpacity=".22" />
+          <stop offset="0" stopColor={color} stopOpacity=".1" />
           <stop offset="1" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
@@ -962,7 +963,7 @@ export function PriceChart({ data, buys = [], avg = null, label, zoom }: { data:
         <svg ref={g.ref} className={`${chartClass(narrow)} zchart`} viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`${label}. ${tr("zoom.aria")}`} {...g.props}>
           <defs>
             <linearGradient id={`${uid}g`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor={color} stopOpacity=".22" />
+              <stop offset="0" stopColor={color} stopOpacity=".1" />
               <stop offset="1" stopColor={color} stopOpacity="0" />
             </linearGradient>
             <clipPath id={`${uid}c`}>

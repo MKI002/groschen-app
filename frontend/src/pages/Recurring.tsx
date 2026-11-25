@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useNarrow } from "../components/Charts";
 import { Seg } from "../components/UI";
 import { useT } from "../i18n";
 import { redirect, useSearch } from "../lib/router";
@@ -14,7 +15,9 @@ type View = "list" | "calendar" | "orbit";
 export default function Recurring() {
   const t = useT();
   const asked = useSearch().get("view");
-  const view: View = asked === "calendar" || asked === "orbit" ? asked : "list";
+  // On a phone the orbit is too small to read or tap, so it isn't offered there; an orbit link opens the list.
+  const phone = useNarrow("(max-width: 820px)");
+  const view: View = asked === "calendar" || (asked === "orbit" && !phone) ? asked : "list";
   const switcher = (
     <Seg<View>
       label={t("rec.view")}
@@ -23,7 +26,7 @@ export default function Recurring() {
       options={[
         ["list", t("rec.list")],
         ["calendar", t("rec.calendar")],
-        ["orbit", t("rec.orbit")],
+        ...(phone ? [] : [["orbit", t("rec.orbit")] as [View, string]]),
       ]}
     />
   );
