@@ -1,0 +1,34 @@
+{
+ "pair01": {
+  "file": "07-spending.desk.en.png",
+  "after": "B"
+ },
+ "pair02": {
+  "file": "07-spending.phone.de.png",
+  "after": "A"
+ },
+ "pair03": {
+  "file": "11-recurring-list.desk.en.png",
+  "after": "B"
+ },
+ "pair04": {
+  "file": "11-recurring-list.phone.de.png",
+  "after": "A"
+ },
+ "pair05": {
+  "file": "12-recurring-calendar.desk.en.png",
+  "after": "A"
+ },
+ "pair06": {
+  "file": "12-recurring-calendar.phone.de.png",
+  "after": "A"
+ },
+ "pair07": {
+  "file": "15-investments.desk.en.png",
+  "after": "B"
+ },
+ "pair08": {
+  "file": "17-inv-analysis.desk.en.png",
+  "after": "A"
+ }
+}

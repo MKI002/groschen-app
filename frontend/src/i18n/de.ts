@@ -896,7 +896,7 @@ export const de: Record<Key, string> = {
   "subs.heroSub.other": "{year} im Jahr, {n} regelmäßige Zahlungen",
   "subs.history": "Preis von {name} im Verlauf",
   "subs.lastOn": "zuletzt am {date}",
-  "subs.monthlyTitle": "Fixkosten pro Monat",
+  "subs.monthlyTitle": "Fixkosten im Schnitt pro Monat",
   "subs.nextIs": "nächste Zahlung",
   "subs.nextUp": "Als Nächstes",
   "subs.onDay": "am {day}.",

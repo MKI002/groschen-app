@@ -228,3 +228,53 @@ Plan: round 4 the daily tasks (1, 2, 3), round 5 phone charts (4), round 6 polis
 **Blind judge** (8 pairs, [`reviews/round-6/judge.md`](reviews/round-6/judge.md)): mapped through the key, the new version won all 8 pairs. Named cost: on desktop the longer Saved caption wraps onto two lines.
 
 **Kept.**
+
+## Full pass after round 6 (six fresh reviewers, all 140 screenshots)
+
+Reviews: [`reviews/pass-6/`](reviews/pass-6/). Mean scores (same extraction as before; a side-effect check, not the ratchet):
+
+| Area | Clarity | Hierarchy | Tasks | Data | Naming | Consistency | Phone | Access. | Craft | Mean |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Overview | 8.0 | 8.0 | 8.0 | 6.3 | 7.0 | 6.5 | 7.6 | 6.0 | 7.5 | 7.2 |
+| Transactions | 8.0 | 7.1 | 6.8 | 5.8 | 5.9 | 5.6 | 6.8 | 6.0 | 7.5 | 6.5 |
+| Spending | 7.5 | 6.6 | 7.0 | 6.7 | 5.6 | 6.5 | 7.1 | 5.0 | 7.3 | 6.7 |
+| Drilldowns | 8.3 | 8.0 | 6.8 | 6.6 | 7.2 | 6.5 | 6.9 | 6.0 | 7.3 | 7.1 |
+| Fixed costs | 7.0 | 6.4 | 6.0 | 5.0 | 6.0 | 5.0 | 6.0 | 5.0 | 6.4 | 5.8 |
+| Net worth | 8.7 | 7.3 | 7.0 | 5.7 | 6.3 | 6.4 | 7.2 | 5.0 | 7.0 | 6.8 |
+| Depot | 7.1 | 7.1 | 7.3 | 6.5 | 5.8 | 5.8 | 7.2 | 5.8 | 7.1 | 6.7 |
+| ETF page | 8.0 | 6.0 | – | 7.7 | 5.7 | 5.7 | 6.6 | 6.0 | 7.0 | 6.6 |
+| Settings | 7.3 | 6.7 | 6.0 | – | 5.8 | 5.5 | 6.4 | 5.0 | 6.5 | 6.1 |
+| Wizard & login | 8.7 | 8.0 | 7.0 | – | 6.5 | 6.0 | 7.0 | 5.0 | 7.0 | 7.0 |
+
+No reviewer named a change from rounds 1–6 as a problem. Every reviewer kept the payday hero and its itemised dialog, the "What changed" feed and the drill-down breadcrumbs. Tasks: "last month's groceries" now 5 steps on both sizes (was 5–7); "before payday" 1 step.
+
+- **Capture artefact.** The review queue's summary line ("8 transactions · 110,315.81 € in") came from the unfiltered recording; the script now totals the rows it keeps. The 39-vs-8 count is still the demo's 200-row recording.
+- **Re-ranked backlog:**
+
+| # | Item | Raised by | Score |
+|---|---|---|---|
+| 1 | The same figure under the same name with different numbers: fixed costs 1,407.01 € (list) vs 1,423.48 € (calendar); "Swing 15 %" vs "Ups and downs ±17 %"; Housing 35.6 % vs 58.3 % with no base | all six | 24 |
+| 2 | Settings on a phone: 8 tabs in a sideways strip, 2.5 visible; Security and Backups out of sight | IA, phone, first-time, designer | 16 |
+| 3 | Orbit unreadable and untappable on a phone | designer, dataviz, phone | needs Markus |
+| 4 | Filled areas over axes that don't start at zero (net worth, depot, ETF) | dataviz (also round 0) | 4 |
+| 5 | Disabled primary and outline buttons near 3:1 | designer, phone | 6 |
+| 6 | "Group" means built-in groups and your own groups | IA | needs Markus (rename) |
+| 7 | "Needs review" mixes guesses and blanks | IA, daily, first-time | needs backend |
+| 8 | Merchant switch on by default | daily | needs Markus |
+
+Plan: round 7 says what each number counts (#1), round 8 Settings on a phone (#2), then the final pass.
+
+## Round 7: say what each number counts
+
+**Theme.** Pass-6 backlog #1: the same name over different numbers.
+
+**Built, four small copy changes.**
+- Fixed-costs list hero: "Fixed costs, on average per month" / "Fixkosten im Schnitt pro Monat" (the calendar shows one month's actual total).
+- Depot chart legend (EN): "Value without your pay-ins" instead of "Value without deposits", the word the rest of the depot uses.
+- Spending: the largest share said "(58 % of spending)".
+- Calendar title named the month ("… fixed costs in October 2026 · … saved").
+- Analysis (EN): "Ups and downs" renamed "Swing", as on Forecast and in German.
+
+**Blind judge** (8 pairs, [`reviews/round-7/judge.md`](reviews/round-7/judge.md)), mapped through the key: the average label won on desktop and phone; the pay-ins legend won. The share base lost on both sizes ("repeats what the card already says"); the month in the calendar title lost on both (the stepper beside it already names the month, and on the phone the title wrapped); "Swing" lost to "Ups and downs", which matches the card's own explanation.
+
+**Kept** the average label and the legend. **Reverted** the share base, the calendar month and "Swing". The two swing figures (15 % assumed for the forecast, ±17 % measured) stay apart; better wording for the forecast's one is left open.
